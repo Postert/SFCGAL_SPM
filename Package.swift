@@ -4,23 +4,23 @@
 import PackageDescription
 
 let package = Package(
-    name: "SFCGAL_SPM",
+    name: "SFCGAL",
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
-            name: "SFCGAL_SPM",
-            targets: ["SFCGAL_SPM"]
+            name: "SFCGAL",
+            targets: ["SFCGAL"]
         ),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "SFCGAL_SPM"
+            name: "SFCGAL"
         ),
         .testTarget(
-            name: "SFCGAL_SPMTests",
-            dependencies: ["SFCGAL_SPM"]
+            name: "SFCGALTests",
+            dependencies: ["SFCGAL"]
         ),
     ]
 )
