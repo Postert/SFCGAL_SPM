@@ -79,21 +79,67 @@ Alternatively, install the dependencies manually with CMake:
 
 ## Swift Interoperability with C and C++
 
-Wrapping SFCGAL for Swift requires bridging across language boundaries. There are two main strategies, each with distinct trade-offs.
+Wrapping SFCGAL for Swift requires bridging across language boundaries. The key insight is that **we do not bundle any C/C++ source code** in this package. Instead, we rely on SFCGAL being installed on the system (via Homebrew, apt, vcpkg, etc.) and use Swift Package Manager's `systemLibrary` target with `pkgConfig` to locate the headers and libraries at build time.
 
-### Option A: Bridge via the SFCGAL C API
+### How It Works: systemLibrary + pkg-config
 
-SFCGAL provides a [C API](https://sfcgal.gitlab.io/SFCGAL/group__capi.html) (`sfcgal_c.h`) that exposes most of its functionality through opaque pointers and plain C functions. Swift can import C libraries natively using a **system library target** with a `module.modulemap`:
+When SFCGAL is installed on the system, it provides a `sfcgal.pc` file (a [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) descriptor). For example, a Homebrew install produces:
+
+```
+# sfcgal.pc
+prefix=/opt/homebrew/Cellar/sfcgal/2.2.0_2
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: sfcgal
+Description: A wrapper around CGAL ...
+Version: 2.2.0
+Libs: -L${libdir} -lSFCGAL
+Cflags: -I${includedir}
+```
+
+SPM reads this file to automatically resolve the correct `-I` (header) and `-L`/`-l` (linker) flags. No manual path configuration is needed — the system package manager handles the entire SFCGAL/CGAL/Boost/GMP/MPFR dependency tree, and `pkg-config` tells SPM where everything lives.
+
+
+### Swift C++ Interoperability Resources
+
+#### Official Docs
+- [Mixing Swift and C++](https://www.swift.org/documentation/cxx-interop/) — the primary reference guide
+- [C++ Interop Status Page](https://www.swift.org/documentation/cxx-interop/status/) — tracks what's supported vs. not
+- [WWDC23 "Mix Swift and C++"](https://developer.apple.com/videos/play/wwdc2023/10172/) — practical walkthrough by Apple engineers
+
+### Sample Projects & Hands-on Code
+- 🛠️ [swiftlang/swift on GitHub](https://github.com/swiftlang/swift/blob/main/docs/CppInteroperability/GettingStartedWithC++Interop.md) — official getting-started doc with working package examples
+
+### Package Structure
+
+The package needs a thin `systemLibrary` target that contains only a `module.modulemap` (and optionally an umbrella header). This target has no Swift or C source files — it just tells the Swift compiler how to import the system-installed C API:
 
 ```
 Sources/
   CSFCGAL/
     include/
-      module.modulemap   // maps the C headers for Swift
-      shim.h             // #includes <sfcgal_c.h>
+      module.modulemap   // maps the installed C headers for Swift import
+      shim.h             // #include <SFCGAL/capi/sfcgal_c.h>
 ```
 
-In `Package.swift`, this would be declared as:
+An example `module.modulemap`:
+
+```modulemap
+module CSFCGAL {
+    umbrella header "shim.h"
+    link "SFCGAL"
+    export *
+}
+```
+
+And the corresponding `shim.h`:
+
+```c
+#include <SFCGAL/capi/sfcgal_c.h>
+```
+
+In `Package.swift`, this is declared as:
 
 ```swift
 .systemLibrary(
@@ -106,23 +152,38 @@ In `Package.swift`, this would be declared as:
 )
 ```
 
-This is the **simplest and most portable** approach — it works on all platforms and avoids any C++ interop complexity.
+The `providers` field is informational — if the library isn't found, SPM will suggest the appropriate install command for the user's platform.
 
-### Option B: Direct C++ Interoperability
-
-Since Swift 5.9, Swift supports [direct C++ interop](https://www.swift.org/documentation/cxx-interop/). This allows Swift to call C++ APIs without a C shim. To enable it in `Package.swift`:
+The Swift wrapper target then depends on this system library:
 
 ```swift
 .target(
     name: "SFCGAL",
-    dependencies: ["CSFCGAL"],
-    swiftSettings: [
-        .interoperabilityMode(.Cxx)
-    ]
+    dependencies: ["CSFCGAL"]
 )
 ```
 
-This could allow wrapping SFCGAL's richer C++ types directly, but comes with significant challenges (see below).
+After this, Swift code can `import CSFCGAL` to call the C API directly, and the `SFCGAL` target provides an idiomatic Swift layer on top.
+
+### Why the C API (Not Direct C++ Interop)
+
+SFCGAL exposes a [C API](https://sfcgal.gitlab.io/SFCGAL/group__capi.html) (`SFCGAL/capi/sfcgal_c.h`) that covers most of its functionality through opaque pointers and plain C functions. We use this rather than Swift's direct C++ interop (available since Swift 5.9 via `.interoperabilityMode(.Cxx)`) for several reasons:
+
+| Concern | C API approach | Direct C++ interop |
+|---------|---------------|-------------------|
+| **Template-heavy code** | Not an issue — C API uses opaque pointers | CGAL/Boost templates cannot be imported by Swift; requires shim layers |
+| **Boost headers** | Not exposed | Too complex for the Swift/C++ bridge |
+| **Module maps** | Simple — one header, one link directive | Very difficult with CGAL/Boost transitive headers |
+| **Platform compatibility** | Works everywhere pkg-config is available | Linker differences between libc++ (macOS), libstdc++ (Linux), and MSVC (Windows) add complexity |
+| **Memory management** | Explicit create/destroy — wrapped with Swift `deinit` | Mixed ownership models are harder to get right |
+
+### Platform Considerations for pkg-config
+
+| Platform | pkg-config availability |
+|----------|------------------------|
+| macOS (Homebrew) | `sfcgal.pc` installed automatically by `brew install sfcgal` |
+| Ubuntu / Debian | `sfcgal.pc` installed by `apt install libsfcgal-dev` |
+| Windows | Not standard. May need to set `PKG_CONFIG_PATH` manually, generate a `.pc` file, or use `unsafeFlags` in `Package.swift` to specify paths directly |
 
 
 ## Usage
