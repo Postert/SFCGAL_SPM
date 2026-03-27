@@ -21,7 +21,7 @@ GMP_VERSION="6.3.0"
 GMP_URL="https://gmplib.org/download/gmp/gmp-${GMP_VERSION}.tar.xz"
 IOS_MIN_VERSION="15.0"
 
-OUTPUT_DIR="${1:-$(pwd)/gmp-ios-build}"
+OUTPUT_DIR="$(cd "$(dirname "${1:-$(pwd)/gmp-ios-build}")" && pwd)/$(basename "${1:-$(pwd)/gmp-ios-build}")"
 WORK_DIR=$(mktemp -d)
 trap 'rm -rf "$WORK_DIR"' EXIT
 
