@@ -11,3 +11,4 @@ DerivedData/
 gmp-ios-build/
 mpfr-ios-build/
 sfcgal-ios-build/
+xcframeworks/
