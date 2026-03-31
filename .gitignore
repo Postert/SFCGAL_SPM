@@ -6,3 +6,8 @@ DerivedData/
 .swiftpm/configuration/registries.json
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
+
+# Cross-compilation build artifacts
+gmp-ios-build/
+mpfr-ios-build/
+sfcgal-ios-build/
