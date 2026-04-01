@@ -30,7 +30,7 @@
 
 set -euo pipefail
 
-SFCGAL_VERSION="2.0.0"
+SFCGAL_VERSION="${SFCGAL_VERSION_OVERRIDE:-2.0.0}"
 SFCGAL_URL="https://gitlab.com/sfcgal/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz"
 CGAL_VERSION="6.0.1"
 CGAL_URL="https://github.com/CGAL/cgal/releases/download/v${CGAL_VERSION}/CGAL-${CGAL_VERSION}.tar.xz"

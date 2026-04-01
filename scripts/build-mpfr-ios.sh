@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-MPFR_VERSION="4.2.1"
+MPFR_VERSION="${MPFR_VERSION_OVERRIDE:-4.2.1}"
 MPFR_URL="https://www.mpfr.org/mpfr-${MPFR_VERSION}/mpfr-${MPFR_VERSION}.tar.xz"
 IOS_MIN_VERSION="15.0"
 

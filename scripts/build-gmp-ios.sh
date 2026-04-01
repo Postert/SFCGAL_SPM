@@ -17,7 +17,7 @@
 
 set -euo pipefail
 
-GMP_VERSION="6.3.0"
+GMP_VERSION="${GMP_VERSION_OVERRIDE:-6.3.0}"
 GMP_URL="https://gmplib.org/download/gmp/gmp-${GMP_VERSION}.tar.xz"
 IOS_MIN_VERSION="15.0"
 
