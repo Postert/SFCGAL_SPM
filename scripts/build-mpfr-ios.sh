@@ -22,7 +22,10 @@
 set -euo pipefail
 
 MPFR_VERSION="${MPFR_VERSION_OVERRIDE:-4.2.1}"
-MPFR_URL="https://www.mpfr.org/mpfr-${MPFR_VERSION}/mpfr-${MPFR_VERSION}.tar.xz"
+MPFR_URLS=(
+    "https://www.mpfr.org/mpfr-${MPFR_VERSION}/mpfr-${MPFR_VERSION}.tar.xz"
+    "https://ftp.gnu.org/gnu/mpfr/mpfr-${MPFR_VERSION}.tar.xz"
+)
 IOS_MIN_VERSION="15.0"
 
 if [ $# -lt 1 ]; then
@@ -39,6 +42,23 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 NCPU=$(sysctl -n hw.ncpu)
 
+# Download with retry and fallback mirrors
+download_with_retry() {
+    local output="$1"
+    shift
+    local urls=("$@")
+    for url in "${urls[@]}"; do
+        echo "  Trying: $url"
+        if curl -fSL --retry 3 --retry-delay 5 --connect-timeout 30 "$url" -o "$output"; then
+            echo "  Downloaded from: $url"
+            return 0
+        fi
+        echo "  Failed, trying next mirror..."
+    done
+    echo "ERROR: All download mirrors failed."
+    exit 1
+}
+
 # Validate GMP builds exist
 for variant in ios-arm64 simulator-arm64 simulator-x86_64; do
     if [ ! -f "$GMP_DIR/$variant/lib/libgmp.a" ]; then
@@ -49,7 +69,7 @@ for variant in ios-arm64 simulator-arm64 simulator-x86_64; do
 done
 
 echo "=== Downloading MPFR ${MPFR_VERSION} ==="
-curl -sL "$MPFR_URL" -o "$WORK_DIR/mpfr.tar.xz"
+download_with_retry "$WORK_DIR/mpfr.tar.xz" "${MPFR_URLS[@]}"
 tar xf "$WORK_DIR/mpfr.tar.xz" -C "$WORK_DIR"
 MPFR_SRC="$WORK_DIR/mpfr-${MPFR_VERSION}"
 

@@ -18,7 +18,10 @@
 set -euo pipefail
 
 GMP_VERSION="${GMP_VERSION_OVERRIDE:-6.3.0}"
-GMP_URL="https://gmplib.org/download/gmp/gmp-${GMP_VERSION}.tar.xz"
+GMP_URLS=(
+    "https://gmplib.org/download/gmp/gmp-${GMP_VERSION}.tar.xz"
+    "https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}.tar.xz"
+)
 IOS_MIN_VERSION="15.0"
 
 OUTPUT_DIR="$(cd "$(dirname "${1:-$(pwd)/gmp-ios-build}")" && pwd)/$(basename "${1:-$(pwd)/gmp-ios-build}")"
@@ -27,8 +30,25 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 NCPU=$(sysctl -n hw.ncpu)
 
+# Download with retry and fallback mirrors
+download_with_retry() {
+    local output="$1"
+    shift
+    local urls=("$@")
+    for url in "${urls[@]}"; do
+        echo "  Trying: $url"
+        if curl -fSL --retry 3 --retry-delay 5 --connect-timeout 30 "$url" -o "$output"; then
+            echo "  Downloaded from: $url"
+            return 0
+        fi
+        echo "  Failed, trying next mirror..."
+    done
+    echo "ERROR: All download mirrors failed."
+    exit 1
+}
+
 echo "=== Downloading GMP ${GMP_VERSION} ==="
-curl -sL "$GMP_URL" -o "$WORK_DIR/gmp.tar.xz"
+download_with_retry "$WORK_DIR/gmp.tar.xz" "${GMP_URLS[@]}"
 tar xf "$WORK_DIR/gmp.tar.xz" -C "$WORK_DIR"
 GMP_SRC="$WORK_DIR/gmp-${GMP_VERSION}"
 

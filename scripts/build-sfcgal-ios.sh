@@ -36,7 +36,10 @@ CGAL_VERSION="6.0.1"
 CGAL_URL="https://github.com/CGAL/cgal/releases/download/v${CGAL_VERSION}/CGAL-${CGAL_VERSION}.tar.xz"
 BOOST_VERSION="1.87.0"
 BOOST_VERSION_UNDERSCORE="1_87_0"
-BOOST_URL="https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_UNDERSCORE}.tar.gz"
+BOOST_URLS=(
+    "https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_UNDERSCORE}.tar.gz"
+    "https://sourceforge.net/projects/boost/files/boost/${BOOST_VERSION}/boost_${BOOST_VERSION_UNDERSCORE}.tar.gz/download"
+)
 IOS_MIN_VERSION="15.0"
 
 if [ $# -lt 2 ]; then
@@ -54,6 +57,23 @@ WORK_DIR=$(mktemp -d)
 trap 'rm -rf "$WORK_DIR"' EXIT
 
 NCPU=$(sysctl -n hw.ncpu)
+
+# Download with retry and fallback mirrors
+download_with_retry() {
+    local output="$1"
+    shift
+    local urls=("$@")
+    for url in "${urls[@]}"; do
+        echo "  Trying: $url"
+        if curl -fSL --retry 3 --retry-delay 5 --connect-timeout 30 "$url" -o "$output"; then
+            echo "  Downloaded from: $url"
+            return 0
+        fi
+        echo "  Failed, trying next mirror..."
+    done
+    echo "ERROR: All download mirrors failed."
+    exit 1
+}
 
 # Validate GMP and MPFR builds exist
 for variant in ios-arm64 simulator-arm64 simulator-x86_64; do
@@ -79,17 +99,17 @@ fi
 # =============================================================================
 
 echo "=== Downloading SFCGAL ${SFCGAL_VERSION} ==="
-curl -sL "$SFCGAL_URL" -o "$WORK_DIR/sfcgal.tar.gz"
+download_with_retry "$WORK_DIR/sfcgal.tar.gz" "$SFCGAL_URL"
 tar xf "$WORK_DIR/sfcgal.tar.gz" -C "$WORK_DIR"
 SFCGAL_SRC="$WORK_DIR/SFCGAL-v${SFCGAL_VERSION}"
 
 echo "=== Downloading CGAL ${CGAL_VERSION} (headers only) ==="
-curl -sL "$CGAL_URL" -o "$WORK_DIR/cgal.tar.xz"
+download_with_retry "$WORK_DIR/cgal.tar.xz" "$CGAL_URL"
 tar xf "$WORK_DIR/cgal.tar.xz" -C "$WORK_DIR"
 CGAL_DIR="$WORK_DIR/CGAL-${CGAL_VERSION}"
 
 echo "=== Downloading Boost ${BOOST_VERSION} ==="
-curl -sL "$BOOST_URL" -o "$WORK_DIR/boost.tar.gz"
+download_with_retry "$WORK_DIR/boost.tar.gz" "${BOOST_URLS[@]}"
 tar xf "$WORK_DIR/boost.tar.gz" -C "$WORK_DIR"
 BOOST_ROOT="$WORK_DIR/boost_${BOOST_VERSION_UNDERSCORE}"
 
