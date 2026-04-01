@@ -1,0 +1,233 @@
+name: Build XCFrameworks
+
+on:
+  workflow_dispatch:
+    inputs:
+      sfcgal_version:
+        description: "SFCGAL version to build (e.g., 2.0.0)"
+        required: true
+        default: "2.0.0"
+      gmp_version:
+        description: "GMP version (e.g., 6.3.0)"
+        required: true
+        default: "6.3.0"
+      mpfr_version:
+        description: "MPFR version (e.g., 4.2.1)"
+        required: true
+        default: "4.2.1"
+      create_release:
+        description: "Create a GitHub Release with the XCFrameworks"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build XCFrameworks
+    runs-on: macos-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install cmake automake autoconf libtool
+
+      - name: Show build environment
+        run: |
+          echo "Xcode: $(xcodebuild -version | head -1)"
+          echo "SDK: $(xcrun --sdk iphoneos --show-sdk-path)"
+          echo "CMake: $(cmake --version | head -1)"
+          echo "CPUs: $(sysctl -n hw.ncpu)"
+
+      # ── Cross-compile GMP ──────────────────────────────────────────────
+      - name: Build GMP for iOS
+        run: ./scripts/build-gmp-ios.sh gmp-ios-build
+        env:
+          GMP_VERSION_OVERRIDE: ${{ inputs.gmp_version }}
+
+      - name: Cache GMP build
+        uses: actions/cache/save@v4
+        with:
+          path: gmp-ios-build
+          key: gmp-${{ inputs.gmp_version }}-${{ runner.os }}
+
+      # ── Cross-compile MPFR ─────────────────────────────────────────────
+      - name: Build MPFR for iOS
+        run: ./scripts/build-mpfr-ios.sh gmp-ios-build mpfr-ios-build
+        env:
+          MPFR_VERSION_OVERRIDE: ${{ inputs.mpfr_version }}
+
+      - name: Cache MPFR build
+        uses: actions/cache/save@v4
+        with:
+          path: mpfr-ios-build
+          key: mpfr-${{ inputs.mpfr_version }}-${{ runner.os }}
+
+      # ── Cross-compile SFCGAL ───────────────────────────────────────────
+      - name: Build SFCGAL for iOS
+        run: ./scripts/build-sfcgal-ios.sh gmp-ios-build mpfr-ios-build sfcgal-ios-build
+        env:
+          SFCGAL_VERSION_OVERRIDE: ${{ inputs.sfcgal_version }}
+
+      # ── Create XCFrameworks ────────────────────────────────────────────
+      - name: Create XCFrameworks
+        run: ./scripts/create-xcframeworks.sh
+
+      # ── Verify XCFrameworks ────────────────────────────────────────────
+      - name: Verify XCFrameworks
+        run: |
+          echo "=== Checking XCFramework contents ==="
+          for fw in GMP MPFR SFCGAL; do
+            fw_path="xcframeworks/${fw}.xcframework"
+            if [ ! -d "$fw_path" ]; then
+              echo "ERROR: ${fw}.xcframework not found!"
+              exit 1
+            fi
+
+            echo "--- ${fw}.xcframework ---"
+
+            # Verify Info.plist exists and is valid
+            plutil -lint "${fw_path}/Info.plist"
+
+            # Check architectures
+            find "$fw_path" -name "*.a" | while read -r lib; do
+              echo "  $(basename "$lib"): $(lipo -info "$lib" 2>&1)"
+            done
+
+            # Check module maps
+            modulemap_count=$(find "$fw_path" -name "module.modulemap" | wc -l | tr -d ' ')
+            if [ "$modulemap_count" -lt 2 ]; then
+              echo "ERROR: Expected at least 2 module maps in ${fw}.xcframework, found $modulemap_count"
+              exit 1
+            fi
+            echo "  Module maps: $modulemap_count"
+            echo ""
+          done
+
+      # ── Zip XCFrameworks ───────────────────────────────────────────────
+      - name: Package XCFrameworks
+        run: |
+          cd xcframeworks
+          for fw in GMP MPFR SFCGAL; do
+            zip -r -y "${fw}.xcframework.zip" "${fw}.xcframework"
+            echo "${fw}.xcframework.zip: $(du -h "${fw}.xcframework.zip" | cut -f1)"
+          done
+
+      # ── Compute checksums ──────────────────────────────────────────────
+      - name: Compute checksums
+        id: checksums
+        run: |
+          cd xcframeworks
+          for fw in GMP MPFR SFCGAL; do
+            checksum=$(swift package compute-checksum "${fw}.xcframework.zip")
+            echo "${fw}_CHECKSUM=${checksum}" >> "$GITHUB_OUTPUT"
+            echo "${fw}: ${checksum}"
+          done
+
+      # ── Upload artifacts (always) ──────────────────────────────────────
+      - name: Upload XCFramework artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcframeworks-sfcgal-${{ inputs.sfcgal_version }}
+          path: |
+            xcframeworks/GMP.xcframework.zip
+            xcframeworks/MPFR.xcframework.zip
+            xcframeworks/SFCGAL.xcframework.zip
+          retention-days: 30
+
+      # ── Create GitHub Release ──────────────────────────────────────────
+      - name: Create GitHub Release
+        if: inputs.create_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SFCGAL_VERSION: ${{ inputs.sfcgal_version }}
+          GMP_VERSION: ${{ inputs.gmp_version }}
+          MPFR_VERSION: ${{ inputs.mpfr_version }}
+          GMP_CHECKSUM: ${{ steps.checksums.outputs.GMP_CHECKSUM }}
+          MPFR_CHECKSUM: ${{ steps.checksums.outputs.MPFR_CHECKSUM }}
+          SFCGAL_CHECKSUM: ${{ steps.checksums.outputs.SFCGAL_CHECKSUM }}
+        run: |
+          TAG="v${SFCGAL_VERSION}"
+
+          BODY="$(cat <<'HEREDOC'
+          ## XCFrameworks for iOS
+
+          Cross-compiled static libraries packaged as XCFrameworks for iOS device (arm64) and simulator (arm64 + x86_64).
+
+          ### Minimum Deployment Target
+          - iOS 15.0
+
+          ### Architectures
+          - **iOS Device:** arm64
+          - **iOS Simulator:** arm64 + x86_64 (fat binary)
+          HEREDOC
+          )"
+
+          # Append version table and checksums (needs variable expansion)
+          BODY="${BODY}
+
+          ### Library Versions
+          | Library | Version |
+          |---------|---------|
+          | SFCGAL  | ${SFCGAL_VERSION} |
+          | GMP     | ${GMP_VERSION} |
+          | MPFR    | ${MPFR_VERSION} |
+
+          ### Swift Package Manager Checksums
+          \`\`\`
+          GMP:    ${GMP_CHECKSUM}
+          MPFR:   ${MPFR_CHECKSUM}
+          SFCGAL: ${SFCGAL_CHECKSUM}
+          \`\`\`"
+
+          gh release create "$TAG" \
+            --title "SFCGAL ${SFCGAL_VERSION} XCFrameworks" \
+            --notes "$BODY" \
+            xcframeworks/GMP.xcframework.zip \
+            xcframeworks/MPFR.xcframework.zip \
+            xcframeworks/SFCGAL.xcframework.zip
+
+          echo "Release created: $TAG"
+          echo "RELEASE_TAG=${TAG}" >> "$GITHUB_OUTPUT"
+
+      # ── Print Package.swift snippet ────────────────────────────────────
+      - name: Print Package.swift binaryTarget snippet
+        if: inputs.create_release
+        env:
+          SFCGAL_VERSION: ${{ inputs.sfcgal_version }}
+          GMP_CHECKSUM: ${{ steps.checksums.outputs.GMP_CHECKSUM }}
+          MPFR_CHECKSUM: ${{ steps.checksums.outputs.MPFR_CHECKSUM }}
+          SFCGAL_CHECKSUM: ${{ steps.checksums.outputs.SFCGAL_CHECKSUM }}
+        run: |
+          REPO_URL="https://github.com/${{ github.repository }}"
+          TAG="v${SFCGAL_VERSION}"
+
+          cat <<EOF
+
+          ════════════════════════════════════════════════════════════════════
+          Add these binaryTarget entries to your Package.swift:
+          ════════════════════════════════════════════════════════════════════
+
+          .binaryTarget(
+              name: "CGMP",
+              url: "${REPO_URL}/releases/download/${TAG}/GMP.xcframework.zip",
+              checksum: "${GMP_CHECKSUM}"
+          ),
+          .binaryTarget(
+              name: "CMPFR",
+              url: "${REPO_URL}/releases/download/${TAG}/MPFR.xcframework.zip",
+              checksum: "${MPFR_CHECKSUM}"
+          ),
+          .binaryTarget(
+              name: "CSFCGAL",
+              url: "${REPO_URL}/releases/download/${TAG}/SFCGAL.xcframework.zip",
+              checksum: "${SFCGAL_CHECKSUM}"
+          ),
+
+          EOF
