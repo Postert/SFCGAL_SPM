@@ -129,6 +129,12 @@ sed -i.bak2 '/^file( GLOB_RECURSE SFCGAL_SOURCES/a\
 message(STATUS "SFCGAL_SOURCES (glob result): ${SFCGAL_SOURCES}")
 ' "$SFCGAL_SRC/src/CMakeLists.txt"
 
+# Debug: check how SFCGAL_API is defined (visibility issue?)
+echo "=== Checking SFCGAL_API / export macro ==="
+grep -n "SFCGAL_API\|visibility\|SFCGAL_BUILD_SHARED\|SFCGAL_USE_STATIC" "$SFCGAL_SRC/src/export.h" || echo "  export.h not found at expected path"
+echo "=== Checking if Sphere.h uses SFCGAL_API ==="
+head -30 "$SFCGAL_SRC/src/primitive3d/Sphere.h" 2>/dev/null || echo "  Sphere.h not found"
+
 # =============================================================================
 # Build required Boost libraries for iOS
 # =============================================================================
@@ -280,13 +286,22 @@ build_sfcgal() {
     cmake --build "$build_dir" --config Release -j"$NCPU" 2>&1 | tail -5
 
     echo "=== Checking libSFCGAL.a contents for ${sdk_name} ${arch} ==="
-    if [ -f "$build_dir/lib/libSFCGAL.a" ]; then
-        ar t "$build_dir/lib/libSFCGAL.a" | grep -iE "(sphere|cylinder)" || echo "  WARNING: No Sphere/Cylinder objects found in archive"
-    elif [ -f "$build_dir/libSFCGAL.a" ]; then
-        ar t "$build_dir/libSFCGAL.a" | grep -iE "(sphere|cylinder)" || echo "  WARNING: No Sphere/Cylinder objects found in archive"
+    local lib_a
+    lib_a=$(find "$build_dir" -name "libSFCGAL.a" | head -1)
+    if [ -n "$lib_a" ]; then
+        echo "  Archive: $lib_a"
+        ar t "$lib_a" | grep -iE "(sphere|cylinder)" || echo "  WARNING: No Sphere/Cylinder objects found in archive"
+
+        echo "  --- Symbols DEFINED in Sphere.cpp.o (T = defined, U = undefined) ---"
+        nm "$lib_a" 2>/dev/null | grep -i "sphere" | grep -E "^[0-9a-f]* [Tt]" | head -10 || echo "  No defined Sphere symbols found"
+
+        echo "  --- Symbols UNDEFINED referencing Sphere in buffer3D.cpp.o ---"
+        nm "$lib_a" 2>/dev/null | grep "buffer3D" -A 1000 | grep -i "sphere" | grep " U " | head -10 || true
+
+        echo "  --- All Sphere/Cylinder symbols in archive ---"
+        nm "$lib_a" 2>/dev/null | grep -iE "(sphere|cylinder)" | head -20 || echo "  No Sphere/Cylinder symbols at all"
     else
-        echo "  Searching for libSFCGAL.a..."
-        find "$build_dir" -name "libSFCGAL.a" -exec ar t {} \; 2>/dev/null | grep -iE "(sphere|cylinder)" || echo "  WARNING: No Sphere/Cylinder objects found"
+        echo "  WARNING: libSFCGAL.a not found in build dir"
     fi
 
     echo "=== Installing SFCGAL for ${sdk_name} ${arch} ==="
