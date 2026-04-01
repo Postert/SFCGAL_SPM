@@ -290,16 +290,40 @@ build_sfcgal() {
     lib_a=$(find "$build_dir" -name "libSFCGAL.a" | head -1)
     if [ -n "$lib_a" ]; then
         echo "  Archive: $lib_a"
-        ar t "$lib_a" | grep -iE "(sphere|cylinder)" || echo "  WARNING: No Sphere/Cylinder objects found in archive"
 
-        echo "  --- Symbols DEFINED in Sphere.cpp.o (T = defined, U = undefined) ---"
-        nm "$lib_a" 2>/dev/null | grep -i "sphere" | grep -E "^[0-9a-f]* [Tt]" | head -10 || echo "  No defined Sphere symbols found"
+        # Extract Sphere.cpp.o and dump ALL its symbols
+        local extract_dir="$build_dir/nm-debug"
+        mkdir -p "$extract_dir"
+        (cd "$extract_dir" && ar x "$lib_a" Sphere.cpp.o 2>/dev/null) || true
 
-        echo "  --- Symbols UNDEFINED referencing Sphere in buffer3D.cpp.o ---"
-        nm "$lib_a" 2>/dev/null | grep "buffer3D" -A 1000 | grep -i "sphere" | grep " U " | head -10 || true
+        if [ -f "$extract_dir/Sphere.cpp.o" ]; then
+            echo "  --- ALL defined symbols (T/t) in Sphere.cpp.o ---"
+            nm "$extract_dir/Sphere.cpp.o" 2>/dev/null | grep -E " [Tt] " | head -20 || echo "  (none)"
 
-        echo "  --- All Sphere/Cylinder symbols in archive ---"
-        nm "$lib_a" 2>/dev/null | grep -iE "(sphere|cylinder)" | head -20 || echo "  No Sphere/Cylinder symbols at all"
+            echo "  --- ALL undefined symbols (U) in Sphere.cpp.o ---"
+            nm "$extract_dir/Sphere.cpp.o" 2>/dev/null | grep " U " | grep -i "sfcgal\|sphere\|cylinder" | head -10 || echo "  (none matching SFCGAL/Sphere/Cylinder)"
+
+            echo "  --- Looking for ANY SFCGAL:: symbols in Sphere.cpp.o ---"
+            nm "$extract_dir/Sphere.cpp.o" 2>/dev/null | grep "SFCGAL" | head -20 || echo "  NO SFCGAL symbols at all in Sphere.cpp.o"
+
+            echo "  --- File size of Sphere.cpp.o ---"
+            ls -la "$extract_dir/Sphere.cpp.o"
+        else
+            echo "  WARNING: Could not extract Sphere.cpp.o from archive"
+        fi
+
+        # Also check what buffer3D.cpp.o expects
+        (cd "$extract_dir" && ar x "$lib_a" buffer3D.cpp.o 2>/dev/null) || true
+        if [ -f "$extract_dir/buffer3D.cpp.o" ]; then
+            echo "  --- Undefined SFCGAL::Sphere/Cylinder symbols needed by buffer3D.cpp.o ---"
+            nm "$extract_dir/buffer3D.cpp.o" 2>/dev/null | grep " U " | grep -iE "sphere|cylinder" | head -10 || echo "  (none)"
+        fi
+
+        # Check the CMake compile command for Sphere.cpp
+        echo "  --- CMake compile command for Sphere.cpp ---"
+        find "$build_dir" -name "*.make" -o -name "compile_commands.json" | head -3
+        grep -r "Sphere.cpp" "$build_dir/src/CMakeFiles/SFCGAL.dir/flags.make" 2>/dev/null || true
+        grep "Sphere.cpp" "$build_dir/compile_commands.json" 2>/dev/null | head -5 || true
     else
         echo "  WARNING: libSFCGAL.a not found in build dir"
     fi
