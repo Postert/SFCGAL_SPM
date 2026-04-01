@@ -27,6 +27,8 @@
 # Patches applied to SFCGAL source:
 #   - Removes hard-coded set(Boost_USE_STATIC_LIBS OFF) so the cache variable
 #     from our -DBoost_USE_STATIC_LIBS=ON takes effect.
+#   - Disables inlining for src/primitive3d/*.cpp (Sphere, Cylinder) to force
+#     Apple Clang to emit out-of-line constructor symbols at -O2.
 
 set -euo pipefail
 
@@ -123,17 +125,23 @@ BOOST_ROOT="$WORK_DIR/boost_${BOOST_VERSION_UNDERSCORE}"
 sed -i.bak 's/^set(Boost_USE_STATIC_LIBS OFF)/#set(Boost_USE_STATIC_LIBS OFF)  # patched for iOS static build/' \
     "$SFCGAL_SRC/CMakeLists.txt"
 
-# Debug: inject a diagnostic message into src/CMakeLists.txt so we can see
-# exactly which sources GLOB_RECURSE picks up during cross-compilation.
-sed -i.bak2 '/^file( GLOB_RECURSE SFCGAL_SOURCES/a\
-message(STATUS "SFCGAL_SOURCES (glob result): ${SFCGAL_SOURCES}")
-' "$SFCGAL_SRC/src/CMakeLists.txt"
+# Apple Clang at -O2 inlines the Sphere/Cylinder constructors (which have
+# empty bodies with only member-initializer lists) and never emits an
+# out-of-line symbol. buffer3D.cpp references them as external symbols,
+# causing an undefined-symbol link error. Fix: disable inlining for the
+# primitive3d source files so the constructors are always emitted.
+if [ -d "$SFCGAL_SRC/src/primitive3d" ]; then
+    echo "=== Patching src/CMakeLists.txt: disable inlining for primitive3d ==="
+    cat >> "$SFCGAL_SRC/src/CMakeLists.txt" << 'PATCH'
 
-# Debug: check how SFCGAL_API is defined (visibility issue?)
-echo "=== Checking SFCGAL_API / export macro ==="
-grep -n "SFCGAL_API\|visibility\|SFCGAL_BUILD_SHARED\|SFCGAL_USE_STATIC" "$SFCGAL_SRC/src/export.h" || echo "  export.h not found at expected path"
-echo "=== Checking if Sphere.h uses SFCGAL_API ==="
-head -30 "$SFCGAL_SRC/src/primitive3d/Sphere.h" 2>/dev/null || echo "  Sphere.h not found"
+# Patched for iOS cross-compilation: Apple Clang at -O2 inlines Sphere/Cylinder
+# constructors and never emits out-of-line symbols, breaking the link.
+file( GLOB _PRIMITIVE3D_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/primitive3d/*.cpp" )
+if(_PRIMITIVE3D_SOURCES)
+    set_source_files_properties(${_PRIMITIVE3D_SOURCES} PROPERTIES COMPILE_OPTIONS "-fno-inline-functions")
+endif()
+PATCH
+fi
 
 # =============================================================================
 # Build required Boost libraries for iOS
@@ -280,53 +288,10 @@ build_sfcgal() {
         -DMPFR_LIBRARIES="$mpfr_prefix/lib/libmpfr.a" \
         -DCMAKE_CXX_STANDARD=17 \
         -Wno-dev \
-        2>&1 | grep -E "(SFCGAL_SOURCES|primitive3d|Sphere|Cylinder|STATUS)" || true
+        > /dev/null 2>&1
 
     echo "=== Building SFCGAL for ${sdk_name} ${arch} ==="
     cmake --build "$build_dir" --config Release -j"$NCPU" 2>&1 | tail -5
-
-    echo "=== Checking libSFCGAL.a contents for ${sdk_name} ${arch} ==="
-    local lib_a
-    lib_a=$(find "$build_dir" -name "libSFCGAL.a" | head -1)
-    if [ -n "$lib_a" ]; then
-        echo "  Archive: $lib_a"
-
-        # Extract Sphere.cpp.o and dump ALL its symbols
-        local extract_dir="$build_dir/nm-debug"
-        mkdir -p "$extract_dir"
-        (cd "$extract_dir" && ar x "$lib_a" Sphere.cpp.o 2>/dev/null) || true
-
-        if [ -f "$extract_dir/Sphere.cpp.o" ]; then
-            echo "  --- ALL defined symbols (T/t) in Sphere.cpp.o ---"
-            nm "$extract_dir/Sphere.cpp.o" 2>/dev/null | grep -E " [Tt] " | head -20 || echo "  (none)"
-
-            echo "  --- ALL undefined symbols (U) in Sphere.cpp.o ---"
-            nm "$extract_dir/Sphere.cpp.o" 2>/dev/null | grep " U " | grep -i "sfcgal\|sphere\|cylinder" | head -10 || echo "  (none matching SFCGAL/Sphere/Cylinder)"
-
-            echo "  --- Looking for ANY SFCGAL:: symbols in Sphere.cpp.o ---"
-            nm "$extract_dir/Sphere.cpp.o" 2>/dev/null | grep "SFCGAL" | head -20 || echo "  NO SFCGAL symbols at all in Sphere.cpp.o"
-
-            echo "  --- File size of Sphere.cpp.o ---"
-            ls -la "$extract_dir/Sphere.cpp.o"
-        else
-            echo "  WARNING: Could not extract Sphere.cpp.o from archive"
-        fi
-
-        # Also check what buffer3D.cpp.o expects
-        (cd "$extract_dir" && ar x "$lib_a" buffer3D.cpp.o 2>/dev/null) || true
-        if [ -f "$extract_dir/buffer3D.cpp.o" ]; then
-            echo "  --- Undefined SFCGAL::Sphere/Cylinder symbols needed by buffer3D.cpp.o ---"
-            nm "$extract_dir/buffer3D.cpp.o" 2>/dev/null | grep " U " | grep -iE "sphere|cylinder" | head -10 || echo "  (none)"
-        fi
-
-        # Check the CMake compile command for Sphere.cpp
-        echo "  --- CMake compile command for Sphere.cpp ---"
-        find "$build_dir" -name "*.make" -o -name "compile_commands.json" | head -3
-        grep -r "Sphere.cpp" "$build_dir/src/CMakeFiles/SFCGAL.dir/flags.make" 2>/dev/null || true
-        grep "Sphere.cpp" "$build_dir/compile_commands.json" 2>/dev/null | head -5 || true
-    else
-        echo "  WARNING: libSFCGAL.a not found in build dir"
-    fi
 
     echo "=== Installing SFCGAL for ${sdk_name} ${arch} ==="
     cmake --install "$build_dir" > /dev/null 2>&1
