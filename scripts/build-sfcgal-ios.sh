@@ -123,6 +123,12 @@ BOOST_ROOT="$WORK_DIR/boost_${BOOST_VERSION_UNDERSCORE}"
 sed -i.bak 's/^set(Boost_USE_STATIC_LIBS OFF)/#set(Boost_USE_STATIC_LIBS OFF)  # patched for iOS static build/' \
     "$SFCGAL_SRC/CMakeLists.txt"
 
+# Debug: inject a diagnostic message into src/CMakeLists.txt so we can see
+# exactly which sources GLOB_RECURSE picks up during cross-compilation.
+sed -i.bak2 '/^file( GLOB_RECURSE SFCGAL_SOURCES/a\
+message(STATUS "SFCGAL_SOURCES (glob result): ${SFCGAL_SOURCES}")
+' "$SFCGAL_SRC/src/CMakeLists.txt"
+
 # =============================================================================
 # Build required Boost libraries for iOS
 # =============================================================================
@@ -268,10 +274,20 @@ build_sfcgal() {
         -DMPFR_LIBRARIES="$mpfr_prefix/lib/libmpfr.a" \
         -DCMAKE_CXX_STANDARD=17 \
         -Wno-dev \
-        > /dev/null 2>&1
+        2>&1 | grep -E "(SFCGAL_SOURCES|primitive3d|Sphere|Cylinder|STATUS)" || true
 
     echo "=== Building SFCGAL for ${sdk_name} ${arch} ==="
     cmake --build "$build_dir" --config Release -j"$NCPU" 2>&1 | tail -5
+
+    echo "=== Checking libSFCGAL.a contents for ${sdk_name} ${arch} ==="
+    if [ -f "$build_dir/lib/libSFCGAL.a" ]; then
+        ar t "$build_dir/lib/libSFCGAL.a" | grep -iE "(sphere|cylinder)" || echo "  WARNING: No Sphere/Cylinder objects found in archive"
+    elif [ -f "$build_dir/libSFCGAL.a" ]; then
+        ar t "$build_dir/libSFCGAL.a" | grep -iE "(sphere|cylinder)" || echo "  WARNING: No Sphere/Cylinder objects found in archive"
+    else
+        echo "  Searching for libSFCGAL.a..."
+        find "$build_dir" -name "libSFCGAL.a" -exec ar t {} \; 2>/dev/null | grep -iE "(sphere|cylinder)" || echo "  WARNING: No Sphere/Cylinder objects found"
+    fi
 
     echo "=== Installing SFCGAL for ${sdk_name} ${arch} ==="
     cmake --install "$build_dir" > /dev/null 2>&1
