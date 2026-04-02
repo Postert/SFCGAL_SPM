@@ -308,7 +308,7 @@ with open('$build_dir/compile_commands.json') as f:
 " 2>/dev/null || echo "  (could not parse compile_commands.json)"
     fi
 
-    # Quick nm check on first arch only
+    # Check for Sphere/Cylinder constructor symbols specifically
     if [ "$arch" = "arm64" ] && [ "$sdk_name" = "iphoneos" ]; then
         local lib_a
         lib_a=$(find "$build_dir" -name "libSFCGAL.a" | head -1)
@@ -316,15 +316,29 @@ with open('$build_dir/compile_commands.json') as f:
             local extract_dir="$build_dir/nm-check"
             mkdir -p "$extract_dir"
             (cd "$extract_dir" && ar x "$lib_a" Sphere.cpp.o 2>/dev/null) || true
-            if [ -f "$extract_dir/Sphere.cpp.o" ]; then
-                echo "=== SFCGAL:: symbols in Sphere.cpp.o ==="
-                nm "$extract_dir/Sphere.cpp.o" 2>/dev/null | grep "6SFCGAL" | head -15 || echo "  NONE"
-            fi
+            (cd "$extract_dir" && ar x "$lib_a" Cylinder.cpp.o 2>/dev/null) || true
+
+            echo "=== All SFCGAL::Sphere symbols (no limit) ==="
+            nm "$extract_dir/Sphere.cpp.o" 2>/dev/null | grep "6SFCGAL6Sphere" || echo "  NONE"
+
+            echo "=== All SFCGAL::Cylinder symbols (no limit) ==="
+            nm "$extract_dir/Cylinder.cpp.o" 2>/dev/null | grep "6SFCGAL8Cylinder" || echo "  NONE"
+
+            echo "=== Specifically looking for constructors (C1/C2) ==="
+            nm "$extract_dir/Sphere.cpp.o" 2>/dev/null | grep "6SphereC" || echo "  No Sphere constructor"
+            nm "$extract_dir/Cylinder.cpp.o" 2>/dev/null | grep "8CylinderC" || echo "  No Cylinder constructor"
+
         fi
     fi
 
     echo "=== Installing SFCGAL for ${sdk_name} ${arch} ==="
     cmake --install "$build_dir" > /dev/null 2>&1
+
+    # Verify installed library has the constructors
+    if [ "$arch" = "arm64" ] && [ "$sdk_name" = "iphoneos" ]; then
+        echo "=== Constructors in INSTALLED library ==="
+        nm "$prefix/lib/libSFCGAL.a" 2>/dev/null | grep -E "6SphereC|8CylinderC" | head -5 || echo "  MISSING in installed lib"
+    fi
 }
 
 mkdir -p "$OUTPUT_DIR"
