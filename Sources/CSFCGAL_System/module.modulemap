@@ -1,0 +1,5 @@
+module CSFCGAL_System [system] {
+    header "sfcgal_shim.h"
+    link "SFCGAL"
+    export *
+}
