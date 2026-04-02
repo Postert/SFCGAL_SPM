@@ -7,8 +7,8 @@ import CSFCGAL_Binary
 import CSFCGAL_Shim
 
 /// The exact SFCGAL version this package is built against.
-/// Must match the version used to build the iOS xcframeworks.
-public let expectedSFCGALVersion = "2.2.0"
+/// Sourced from CSFCGAL_Shim — single source of truth shared with the compile-time check.
+public let expectedSFCGALVersion: String = SWIFTSFCGAL_REQUIRED_VERSION
 
 public func sfcgalVersion() -> String {
     return String(cString: sfcgal_version())
@@ -20,6 +20,6 @@ public func validateSFCGALVersion() {
     let actual = sfcgalVersion()
     precondition(
         actual == expectedSFCGALVersion,
-        "SFCGAL version mismatch: found \(actual) but this package requires exactly \(expectedSFCGALVersion)"
+        "SFCGAL version mismatch: SwiftSFCGAL requires exactly SFCGAL \(expectedSFCGALVersion), but found \(actual) installed on this system"
     )
 }
