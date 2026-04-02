@@ -27,8 +27,8 @@
 # Patches applied to SFCGAL source:
 #   - Removes hard-coded set(Boost_USE_STATIC_LIBS OFF) so the cache variable
 #     from our -DBoost_USE_STATIC_LIBS=ON takes effect.
-#   - Disables inlining for src/primitive3d/*.cpp (Sphere, Cylinder) to force
-#     Apple Clang to emit out-of-line constructor symbols at -O2.
+#   - Defines CGAL_DO_NOT_USE_BOOST_MP to ensure consistent type mangling
+#     across all translation units (prevents Gmpq vs boost::multiprecision mismatch).
 
 set -euo pipefail
 
@@ -125,24 +125,21 @@ BOOST_ROOT="$WORK_DIR/boost_${BOOST_VERSION_UNDERSCORE}"
 sed -i.bak 's/^set(Boost_USE_STATIC_LIBS OFF)/#set(Boost_USE_STATIC_LIBS OFF)  # patched for iOS static build/' \
     "$SFCGAL_SRC/CMakeLists.txt"
 
-# Workaround: Apple Clang cross-compiling for iOS does not emit ANY non-template
-# symbols from src/primitive3d/*.cpp (Sphere, Cylinder). All methods — not just
-# constructors — are missing from the .o files. Force -O0 and -fstandalone-debug
-# for these files and print the actual compile command for diagnosis.
-if [ -d "$SFCGAL_SRC/src/primitive3d" ]; then
-    echo "=== Patching src/CMakeLists.txt: force symbol emission for primitive3d ==="
-    cat >> "$SFCGAL_SRC/src/CMakeLists.txt" << 'PATCH'
+# CGAL type mismatch fix: When CGAL detects GMP at configure time, some
+# translation units see Kernel::FT as CGAL::Lazy_exact_nt<CGAL::Gmpq> while
+# others (compiled with different optimization or include order) see it as
+# CGAL::Lazy_exact_nt<boost::multiprecision::number<gmp_rational>>. This causes
+# linker failures because the mangled symbols differ.
+#
+# Fix: ensure CGAL uses its own Gmpq wrapper consistently by defining
+# CGAL_DO_NOT_USE_BOOST_MP, which prevents CGAL from using Boost.Multiprecision
+# wrappers for GMP types.
+echo "=== Patching: force consistent CGAL type resolution ==="
+cat >> "$SFCGAL_SRC/src/CMakeLists.txt" << 'PATCH'
 
-# Patched for iOS cross-compilation: force primitive3d symbol emission
-file( GLOB _PRIMITIVE3D_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/primitive3d/*.cpp" )
-message(STATUS "primitive3d sources: ${_PRIMITIVE3D_SOURCES}")
-if(_PRIMITIVE3D_SOURCES)
-    set_source_files_properties(${_PRIMITIVE3D_SOURCES}
-        PROPERTIES COMPILE_OPTIONS "-O0;-fno-inline;-fstandalone-debug"
-    )
-endif()
+# Patched for iOS: ensure consistent CGAL::Gmpq usage across all translation units
+target_compile_definitions(SFCGAL PRIVATE CGAL_DO_NOT_USE_BOOST_MP)
 PATCH
-fi
 
 # =============================================================================
 # Build required Boost libraries for iOS
@@ -288,57 +285,14 @@ build_sfcgal() {
         -DMPFR_INCLUDE_DIR="$mpfr_prefix/include" \
         -DMPFR_LIBRARIES="$mpfr_prefix/lib/libmpfr.a" \
         -DCMAKE_CXX_STANDARD=17 \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -Wno-dev \
-        2>&1 | grep -E "(primitive3d|SFCGAL_SOURCES.*primitive)" || true
+        > /dev/null 2>&1
 
     echo "=== Building SFCGAL for ${sdk_name} ${arch} ==="
     cmake --build "$build_dir" --config Release -j"$NCPU" 2>&1 | tail -5
 
-    # Show the actual compile command used for Sphere.cpp
-    echo "=== Compile command for Sphere.cpp (${sdk_name} ${arch}) ==="
-    if [ -f "$build_dir/compile_commands.json" ]; then
-        python3 -c "
-import json
-with open('$build_dir/compile_commands.json') as f:
-    for entry in json.load(f):
-        if 'Sphere.cpp' in entry.get('file',''):
-            print(entry['command'][:500])
-            break
-" 2>/dev/null || echo "  (could not parse compile_commands.json)"
-    fi
-
-    # Check for Sphere/Cylinder constructor symbols specifically
-    if [ "$arch" = "arm64" ] && [ "$sdk_name" = "iphoneos" ]; then
-        local lib_a
-        lib_a=$(find "$build_dir" -name "libSFCGAL.a" | head -1)
-        if [ -n "$lib_a" ]; then
-            local extract_dir="$build_dir/nm-check"
-            mkdir -p "$extract_dir"
-            (cd "$extract_dir" && ar x "$lib_a" Sphere.cpp.o 2>/dev/null) || true
-            (cd "$extract_dir" && ar x "$lib_a" Cylinder.cpp.o 2>/dev/null) || true
-
-            echo "=== All SFCGAL::Sphere symbols (no limit) ==="
-            nm "$extract_dir/Sphere.cpp.o" 2>/dev/null | grep "6SFCGAL6Sphere" || echo "  NONE"
-
-            echo "=== All SFCGAL::Cylinder symbols (no limit) ==="
-            nm "$extract_dir/Cylinder.cpp.o" 2>/dev/null | grep "6SFCGAL8Cylinder" || echo "  NONE"
-
-            echo "=== Specifically looking for constructors (C1/C2) ==="
-            nm "$extract_dir/Sphere.cpp.o" 2>/dev/null | grep "6SphereC" || echo "  No Sphere constructor"
-            nm "$extract_dir/Cylinder.cpp.o" 2>/dev/null | grep "8CylinderC" || echo "  No Cylinder constructor"
-
-        fi
-    fi
-
     echo "=== Installing SFCGAL for ${sdk_name} ${arch} ==="
     cmake --install "$build_dir" > /dev/null 2>&1
-
-    # Verify installed library has the constructors
-    if [ "$arch" = "arm64" ] && [ "$sdk_name" = "iphoneos" ]; then
-        echo "=== Constructors in INSTALLED library ==="
-        nm "$prefix/lib/libSFCGAL.a" 2>/dev/null | grep -E "6SphereC|8CylinderC" | head -5 || echo "  MISSING in installed lib"
-    fi
 }
 
 mkdir -p "$OUTPUT_DIR"
