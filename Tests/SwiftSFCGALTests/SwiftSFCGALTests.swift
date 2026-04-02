@@ -3,5 +3,6 @@ import Testing
 
 @Test func testSfcgalVersion() {
     let version = sfcgalVersion()
-    #expect(!version.isEmpty, "SFCGAL version string should not be empty")
+    #expect(version == expectedSFCGALVersion,
+        "SFCGAL version mismatch: got \(version), expected \(expectedSFCGALVersion)")
 }

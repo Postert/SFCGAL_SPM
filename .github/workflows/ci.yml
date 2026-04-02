@@ -5,13 +5,9 @@ on:
   pull_request:
 
 jobs:
-  test:
-    name: Swift on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+  test-macos:
+    name: Swift on macOS
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -20,16 +16,40 @@ jobs:
           swift-version: "6.2"
           skip-verify-signature: true
 
-      - name: Install SFCGAL (macOS)
-        if: runner.os == 'macOS'
+      - name: Install SFCGAL
         run: brew install sfcgal
 
-      - name: Install SFCGAL (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libsfcgal-dev
+      - name: Build
+        run: swift build
 
-      - name: Swift version
-        run: swift --version
+      - name: Run tests
+        run: swift test
+
+  test-ios:
+    name: Swift on iOS Simulator
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build (iOS Simulator)
+        run: |
+          xcodebuild build \
+            -scheme SwiftSFCGAL \
+            -destination 'platform=iOS Simulator,name=iPhone 16'
+
+  test-linux:
+    name: Swift on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: swift-actions/setup-swift@v3
+        with:
+          swift-version: "6.2"
+          skip-verify-signature: true
+
+      - name: Install SFCGAL
+        run: sudo apt-get update && sudo apt-get install -y libsfcgal-dev
 
       - name: Build
         run: swift build
