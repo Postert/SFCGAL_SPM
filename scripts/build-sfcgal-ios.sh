@@ -27,8 +27,9 @@
 # Patches applied to SFCGAL source:
 #   - Removes hard-coded set(Boost_USE_STATIC_LIBS OFF) so the cache variable
 #     from our -DBoost_USE_STATIC_LIBS=ON takes effect.
-#   - Defines CGAL_DO_NOT_USE_BOOST_MP to ensure consistent type mangling
-#     across all translation units (prevents Gmpq vs boost::multiprecision mismatch).
+#   - Defines CMAKE_OVERRIDDEN_DEFAULT_ENT_BACKEND=0 (GMP_BACKEND) to ensure
+#     consistent CGAL exact-number-type resolution across all translation units
+#     (prevents Gmpq vs boost::multiprecision mismatch without disabling BMP).
 
 set -euo pipefail
 
@@ -131,14 +132,16 @@ sed -i.bak 's/^set(Boost_USE_STATIC_LIBS OFF)/#set(Boost_USE_STATIC_LIBS OFF)  #
 # CGAL::Lazy_exact_nt<boost::multiprecision::number<gmp_rational>>. This causes
 # linker failures because the mangled symbols differ.
 #
-# Fix: ensure CGAL uses its own Gmpq wrapper consistently by defining
-# CGAL_DO_NOT_USE_BOOST_MP, which prevents CGAL from using Boost.Multiprecision
-# wrappers for GMP types.
+# Fix: Override CGAL's default exact-number-type backend to GMP_BACKEND (enum=0).
+# This forces all translation units to resolve Exact_rational to CGAL::Gmpq
+# and Exact_integer to CGAL::Gmpz, while keeping Boost.Multiprecision support
+# available for code that uses it directly (e.g. straightSkeleton.cpp).
 echo "=== Patching: force consistent CGAL type resolution ==="
 cat >> "$SFCGAL_SRC/src/CMakeLists.txt" << 'PATCH'
 
-# Patched for iOS: ensure consistent CGAL::Gmpq usage across all translation units
-target_compile_definitions(SFCGAL PRIVATE CGAL_DO_NOT_USE_BOOST_MP)
+# Patched for iOS: force GMP_BACKEND for exact number types (enum value 0)
+# This ensures all TUs use CGAL::Gmpq without disabling Boost.Multiprecision
+target_compile_definitions(SFCGAL PRIVATE CMAKE_OVERRIDDEN_DEFAULT_ENT_BACKEND=0)
 PATCH
 
 # =============================================================================
@@ -276,6 +279,7 @@ build_sfcgal() {
         -DSFCGAL_BUILD_EXAMPLES=OFF \
         -DSFCGAL_BUILD_BENCH=OFF \
         -DCGAL_DIR="$CGAL_DIR/lib/cmake/CGAL" \
+        -DCGAL_CMAKE_EXACT_NT_BACKEND=GMP_BACKEND \
         -DCMAKE_PREFIX_PATH="$boost_prefix" \
         -DBoost_USE_STATIC_LIBS=ON \
         -DCGAL_Boost_USE_STATIC_LIBS=ON \
