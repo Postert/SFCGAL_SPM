@@ -125,20 +125,21 @@ BOOST_ROOT="$WORK_DIR/boost_${BOOST_VERSION_UNDERSCORE}"
 sed -i.bak 's/^set(Boost_USE_STATIC_LIBS OFF)/#set(Boost_USE_STATIC_LIBS OFF)  # patched for iOS static build/' \
     "$SFCGAL_SRC/CMakeLists.txt"
 
-# Apple Clang at -O2 inlines the Sphere/Cylinder constructors (which have
-# empty bodies with only member-initializer lists) and never emits an
-# out-of-line symbol. buffer3D.cpp references them as external symbols,
-# causing an undefined-symbol link error. Fix: disable inlining for the
-# primitive3d source files so the constructors are always emitted.
+# Workaround: Apple Clang cross-compiling for iOS does not emit ANY non-template
+# symbols from src/primitive3d/*.cpp (Sphere, Cylinder). All methods — not just
+# constructors — are missing from the .o files. Force -O0 and -fstandalone-debug
+# for these files and print the actual compile command for diagnosis.
 if [ -d "$SFCGAL_SRC/src/primitive3d" ]; then
-    echo "=== Patching src/CMakeLists.txt: disable inlining for primitive3d ==="
+    echo "=== Patching src/CMakeLists.txt: force symbol emission for primitive3d ==="
     cat >> "$SFCGAL_SRC/src/CMakeLists.txt" << 'PATCH'
 
-# Patched for iOS cross-compilation: Apple Clang at -O2 inlines Sphere/Cylinder
-# constructors and never emits out-of-line symbols, breaking the link.
+# Patched for iOS cross-compilation: force primitive3d symbol emission
 file( GLOB _PRIMITIVE3D_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/primitive3d/*.cpp" )
+message(STATUS "primitive3d sources: ${_PRIMITIVE3D_SOURCES}")
 if(_PRIMITIVE3D_SOURCES)
-    set_source_files_properties(${_PRIMITIVE3D_SOURCES} PROPERTIES COMPILE_OPTIONS "-fno-inline-functions")
+    set_source_files_properties(${_PRIMITIVE3D_SOURCES}
+        PROPERTIES COMPILE_OPTIONS "-O0;-fno-inline;-fstandalone-debug"
+    )
 endif()
 PATCH
 fi
@@ -287,11 +288,40 @@ build_sfcgal() {
         -DMPFR_INCLUDE_DIR="$mpfr_prefix/include" \
         -DMPFR_LIBRARIES="$mpfr_prefix/lib/libmpfr.a" \
         -DCMAKE_CXX_STANDARD=17 \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -Wno-dev \
-        > /dev/null 2>&1
+        2>&1 | grep -E "(primitive3d|SFCGAL_SOURCES.*primitive)" || true
 
     echo "=== Building SFCGAL for ${sdk_name} ${arch} ==="
     cmake --build "$build_dir" --config Release -j"$NCPU" 2>&1 | tail -5
+
+    # Show the actual compile command used for Sphere.cpp
+    echo "=== Compile command for Sphere.cpp (${sdk_name} ${arch}) ==="
+    if [ -f "$build_dir/compile_commands.json" ]; then
+        python3 -c "
+import json
+with open('$build_dir/compile_commands.json') as f:
+    for entry in json.load(f):
+        if 'Sphere.cpp' in entry.get('file',''):
+            print(entry['command'][:500])
+            break
+" 2>/dev/null || echo "  (could not parse compile_commands.json)"
+    fi
+
+    # Quick nm check on first arch only
+    if [ "$arch" = "arm64" ] && [ "$sdk_name" = "iphoneos" ]; then
+        local lib_a
+        lib_a=$(find "$build_dir" -name "libSFCGAL.a" | head -1)
+        if [ -n "$lib_a" ]; then
+            local extract_dir="$build_dir/nm-check"
+            mkdir -p "$extract_dir"
+            (cd "$extract_dir" && ar x "$lib_a" Sphere.cpp.o 2>/dev/null) || true
+            if [ -f "$extract_dir/Sphere.cpp.o" ]; then
+                echo "=== SFCGAL:: symbols in Sphere.cpp.o ==="
+                nm "$extract_dir/Sphere.cpp.o" 2>/dev/null | grep "6SFCGAL" | head -15 || echo "  NONE"
+            fi
+        fi
+    fi
 
     echo "=== Installing SFCGAL for ${sdk_name} ${arch} ==="
     cmake --install "$build_dir" > /dev/null 2>&1
