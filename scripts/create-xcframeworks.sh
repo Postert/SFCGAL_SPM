@@ -75,18 +75,18 @@ stage_headers() {
 echo ""
 echo "=== Creating GMP.xcframework ==="
 
-GMP_MODULEMAP="module CGMP {
-    header \"gmp.h\"
-    link \"gmp\"
-    export *
-}"
+# GMP and MPFR don't get module maps — they are link-time dependencies only.
+# The SFCGAL module map includes `link "gmp"` and `link "mpfr"` directives
+# so the linker finds them. Omitting module maps avoids the Xcode build error
+# "Multiple commands produce .../include/module.modulemap" when multiple
+# xcframeworks each ship their own module.modulemap.
 
-# Stage headers with module maps for each slice
 GMP_IOS_HEADERS="${STAGING_DIR}/gmp-ios-arm64-headers"
 GMP_SIM_HEADERS="${STAGING_DIR}/gmp-sim-fat-headers"
 
-stage_headers "${GMP_BUILD}/ios-arm64/include" "$GMP_IOS_HEADERS" "$GMP_MODULEMAP"
-stage_headers "${GMP_BUILD}/simulator-arm64/include" "$GMP_SIM_HEADERS" "$GMP_MODULEMAP"
+mkdir -p "$GMP_IOS_HEADERS" "$GMP_SIM_HEADERS"
+cp -R "${GMP_BUILD}/ios-arm64/include"/* "$GMP_IOS_HEADERS"/
+cp -R "${GMP_BUILD}/simulator-arm64/include"/* "$GMP_SIM_HEADERS"/
 
 xcodebuild -create-xcframework \
     -library "${GMP_BUILD}/ios-arm64/lib/libgmp.a" \
@@ -102,17 +102,12 @@ echo "Created GMP.xcframework"
 echo ""
 echo "=== Creating MPFR.xcframework ==="
 
-MPFR_MODULEMAP="module CMPFR {
-    header \"mpfr.h\"
-    link \"mpfr\"
-    export *
-}"
-
 MPFR_IOS_HEADERS="${STAGING_DIR}/mpfr-ios-arm64-headers"
 MPFR_SIM_HEADERS="${STAGING_DIR}/mpfr-sim-fat-headers"
 
-stage_headers "${MPFR_BUILD}/ios-arm64/include" "$MPFR_IOS_HEADERS" "$MPFR_MODULEMAP"
-stage_headers "${MPFR_BUILD}/simulator-arm64/include" "$MPFR_SIM_HEADERS" "$MPFR_MODULEMAP"
+mkdir -p "$MPFR_IOS_HEADERS" "$MPFR_SIM_HEADERS"
+cp -R "${MPFR_BUILD}/ios-arm64/include"/* "$MPFR_IOS_HEADERS"/
+cp -R "${MPFR_BUILD}/simulator-arm64/include"/* "$MPFR_SIM_HEADERS"/
 
 xcodebuild -create-xcframework \
     -library "${MPFR_BUILD}/ios-arm64/lib/libmpfr.a" \
@@ -132,9 +127,11 @@ echo "=== Creating SFCGAL.xcframework ==="
 # SFCGAL/config.h and SFCGAL/export.h transitively.
 # We define SFCGAL_USE_STATIC_LIBS so that SFCGAL_API resolves to nothing
 # (correct for static linking — no dllimport/dllexport).
-SFCGAL_MODULEMAP="module CSFCGAL {
+SFCGAL_MODULEMAP="module CSFCGAL_Binary {
     header \"SFCGAL/capi/sfcgal_c.h\"
     link \"SFCGAL\"
+    link \"gmp\"
+    link \"mpfr\"
     export *
 }"
 

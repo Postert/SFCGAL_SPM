@@ -112,9 +112,9 @@ jobs:
               echo "  $(basename "$lib"): $(lipo -info "$lib" 2>&1)"
             done
 
-            # Check module maps
+            # Only SFCGAL should have module maps (GMP/MPFR are link-only)
             modulemap_count=$(find "$fw_path" -name "module.modulemap" | wc -l | tr -d ' ')
-            if [ "$modulemap_count" -lt 2 ]; then
+            if [ "$fw" = "SFCGAL" ] && [ "$modulemap_count" -lt 2 ]; then
               echo "ERROR: Expected at least 2 module maps in ${fw}.xcframework, found $modulemap_count"
               exit 1
             fi

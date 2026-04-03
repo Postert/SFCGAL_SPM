@@ -13,7 +13,7 @@ jobs:
 
       - uses: swift-actions/setup-swift@v3
         with:
-          swift-version: "6.2"
+          swift-version: "6.2.4"
           skip-verify-signature: true
 
       - name: Install SFCGAL
@@ -40,16 +40,27 @@ jobs:
   test-linux:
     name: Swift on Linux
     runs-on: ubuntu-latest
+    # Ubuntu apt ships an older SFCGAL (1.5.x). This job will fail the
+    # compile-time version check until a PPA or newer distro provides 2.2.0.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
       - uses: swift-actions/setup-swift@v3
         with:
-          swift-version: "6.2"
+          swift-version: "6.2.4"
           skip-verify-signature: true
 
       - name: Install SFCGAL
         run: sudo apt-get update && sudo apt-get install -y libsfcgal-dev
+
+      - name: Check SFCGAL version
+        run: |
+          INSTALLED=$(pkg-config --modversion sfcgal 2>/dev/null || echo "unknown")
+          echo "Installed: $INSTALLED (required: 2.2.0)"
+          if [ "$INSTALLED" != "2.2.0" ]; then
+            echo "::warning::SFCGAL version mismatch — build will likely fail"
+          fi
 
       - name: Build
         run: swift build
