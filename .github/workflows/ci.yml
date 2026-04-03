@@ -40,9 +40,8 @@ jobs:
   test-linux:
     name: Swift on Linux
     runs-on: ubuntu-latest
-    # Ubuntu apt ships an older SFCGAL (1.5.x). This job will fail the
-    # compile-time version check until a PPA or newer distro provides 2.2.0.
-    continue-on-error: true
+    env:
+      SFCGAL_VERSION: "2.2.0"
     steps:
       - uses: actions/checkout@v4
 
@@ -51,19 +50,57 @@ jobs:
           swift-version: "6.2.4"
           skip-verify-signature: true
 
-      - name: Install SFCGAL
-        run: sudo apt-get update && sudo apt-get install -y libsfcgal-dev
-
-      - name: Check SFCGAL version
+      - name: Install SFCGAL build dependencies
         run: |
-          INSTALLED=$(pkg-config --modversion sfcgal 2>/dev/null || echo "unknown")
-          echo "Installed: $INSTALLED (required: 2.2.0)"
-          if [ "$INSTALLED" != "2.2.0" ]; then
-            echo "::warning::SFCGAL version mismatch — build will likely fail"
-          fi
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            libcgal-dev \
+            libboost-serialization-dev \
+            libgmp-dev \
+            libmpfr-dev \
+            pkg-config
+
+      - name: Cache SFCGAL build
+        id: cache-sfcgal
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/sfcgal
+          key: sfcgal-${{ env.SFCGAL_VERSION }}-ubuntu-${{ runner.arch }}
+
+      - name: Build SFCGAL from source
+        if: steps.cache-sfcgal.outputs.cache-hit != 'true'
+        run: |
+          curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz" | tar xz
+          cd SFCGAL-v${SFCGAL_VERSION}
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=/usr/local/sfcgal \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DSFCGAL_BUILD_TESTS=OFF \
+            -DSFCGAL_BUILD_EXAMPLES=OFF \
+            -DSFCGAL_BUILD_BENCH=OFF
+          cmake --build build --parallel $(nproc)
+          sudo cmake --install build
+
+      - name: Install cached SFCGAL
+        if: steps.cache-sfcgal.outputs.cache-hit == 'true'
+        run: |
+          sudo cp -a /usr/local/sfcgal/. /usr/local/
+
+      - name: Verify SFCGAL version
+        run: |
+          export PKG_CONFIG_PATH="/usr/local/sfcgal/lib/pkgconfig:$PKG_CONFIG_PATH"
+          INSTALLED=$(pkg-config --modversion sfcgal)
+          echo "Installed: $INSTALLED (required: $SFCGAL_VERSION)"
+          [ "$INSTALLED" = "$SFCGAL_VERSION" ] || { echo "::error::Version mismatch"; exit 1; }
 
       - name: Build
-        run: swift build
+        run: |
+          export PKG_CONFIG_PATH="/usr/local/sfcgal/lib/pkgconfig:$PKG_CONFIG_PATH"
+          swift build
 
       - name: Run tests
-        run: swift test
+        run: |
+          export PKG_CONFIG_PATH="/usr/local/sfcgal/lib/pkgconfig:$PKG_CONFIG_PATH"
+          export LD_LIBRARY_PATH="/usr/local/sfcgal/lib:$LD_LIBRARY_PATH"
+          swift test
