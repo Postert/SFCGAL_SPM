@@ -53,18 +53,18 @@ let package = Package(
         // ── iOS: prebuilt XCFrameworks (downloaded from GitHub releases) ──
         .binaryTarget(
             name: "CSFCGAL_Binary",
-            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.2.0-1/SFCGAL.xcframework.zip",
-            checksum: "1d596bf0cb510005357435f9eefdc332858008f333c74b35ad5dd08be57b8bfe"
+            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.2.0-2/SFCGAL.xcframework.zip",
+            checksum: "29fdf7a187723f7167fe88e5f138becc5c468cafed013586d32e1af1b785a371"
         ),
         .binaryTarget(
             name: "CGMP_Binary",
-            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.2.0-1/GMP.xcframework.zip",
-            checksum: "2b3919dae1dcc7ef75e27dc0260d99b16cab331a562e855a40ea86b47ef7527f"
+            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.2.0-2/GMP.xcframework.zip",
+            checksum: "aa48ddd715a1d5a02b81ce392d3347bc743de0eef890cf482e1df45764b8f871"
         ),
         .binaryTarget(
             name: "CMPFR_Binary",
-            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.2.0-1/MPFR.xcframework.zip",
-            checksum: "2d58f110d04e9ac7f621c322a65e1cdfa07b2072956b2ced97bc1c685382910a"
+            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.2.0-2/MPFR.xcframework.zip",
+            checksum: "a5f648d4bb87e3f02a5cd0f19d08a7ac9ae7d5ffa082498b4c64d5ba948f3590"
         ),
 
         // ── Tests ──
