@@ -35,7 +35,7 @@ jobs:
         run: |
           xcodebuild build \
             -scheme SwiftSFCGAL \
-            -destination 'platform=iOS Simulator,name=iPhone 16'
+            -destination 'generic/platform=iOS Simulator'
 
   test-linux:
     name: Swift on Linux
