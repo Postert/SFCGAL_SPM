@@ -17,7 +17,7 @@ let package = Package(
             dependencies: [
                 "CSFCGAL_Shim",
                 .target(name: "CSFCGAL_System",
-                    condition: .when(platforms: [.macOS, .linux])),
+                    condition: .when(platforms: [.macOS, .linux, .windows])),
                 .target(name: "CSFCGAL_Binary",
                     condition: .when(platforms: [.iOS, .tvOS, .watchOS, .visionOS])),
                 .target(name: "CGMP_Binary",
@@ -32,7 +32,7 @@ let package = Package(
             name: "CSFCGAL_Shim",
             dependencies: [
                 .target(name: "CSFCGAL_System",
-                    condition: .when(platforms: [.macOS, .linux])),
+                    condition: .when(platforms: [.macOS, .linux, .windows])),
                 .target(name: "CSFCGAL_Binary",
                     condition: .when(platforms: [.iOS, .tvOS, .watchOS, .visionOS])),
             ],

@@ -37,6 +37,69 @@ jobs:
             -scheme SwiftSFCGAL \
             -destination 'generic/platform=iOS Simulator'
 
+  test-windows:
+    name: Swift on Windows
+    runs-on: windows-latest
+    env:
+      SFCGAL_VERSION: "2.2.0"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: swift-actions/setup-swift@v3
+        with:
+          swift-version: "6.1"
+          skip-verify-signature: true
+
+      - name: Install CGAL dependencies via vcpkg
+        run: |
+          vcpkg install yasm-tool:x86-windows
+          vcpkg install cgal:x64-windows
+        env:
+          VCPKG_DEFAULT_TRIPLET: x64-windows
+
+      - name: Cache SFCGAL build
+        id: cache-sfcgal
+        uses: actions/cache@v4
+        with:
+          path: C:/sfcgal
+          key: sfcgal-${{ env.SFCGAL_VERSION }}-windows-${{ runner.arch }}
+
+      - name: Build SFCGAL from source
+        if: steps.cache-sfcgal.outputs.cache-hit != 'true'
+        run: |
+          curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz" | tar xz
+          cd SFCGAL-v${SFCGAL_VERSION}
+          cmake -B build -G Ninja \
+            -DCMAKE_INSTALL_PREFIX=C:/sfcgal \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DSFCGAL_BUILD_TESTS=OFF \
+            -DSFCGAL_BUILD_EXAMPLES=OFF \
+            -DSFCGAL_BUILD_BENCH=OFF
+          cmake --build build --parallel
+          cmake --install build
+
+      - name: Verify SFCGAL version
+        run: |
+          export PKG_CONFIG_PATH="C:/sfcgal/lib/pkgconfig"
+          pkg-config --modversion sfcgal || echo "pkg-config not found, checking install..."
+          ls -la C:/sfcgal/lib/ || true
+          ls -la C:/sfcgal/include/SFCGAL/ || true
+
+      - name: Build
+        run: |
+          export PKG_CONFIG_PATH="C:/sfcgal/lib/pkgconfig"
+          swift build
+
+      - name: Run tests
+        run: |
+          export PKG_CONFIG_PATH="C:/sfcgal/lib/pkgconfig"
+          export PATH="C:/sfcgal/bin:$PATH"
+          swift test
+
   test-linux:
     name: Swift on Linux
     runs-on: ubuntu-latest
