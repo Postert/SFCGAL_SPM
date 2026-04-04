@@ -65,7 +65,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:/sfcgal
-          key: sfcgal-${{ env.SFCGAL_VERSION }}-windows-${{ runner.arch }}
+          key: sfcgal-${{ env.SFCGAL_VERSION }}-windows-${{ runner.arch }}-v2
 
       - name: Build SFCGAL from source
         if: steps.cache-sfcgal.outputs.cache-hit != 'true'
@@ -86,30 +86,33 @@ jobs:
           cmake --build build --parallel
           cmake --install build
 
-      - name: Fix pkg-config file
+      - name: Verify SFCGAL installation
         run: |
-          # SFCGAL's CMake generates an empty prefix= in sfcgal.pc on Windows.
-          # Patch it so SPM's built-in pkg-config parser can resolve paths.
-          sed -i 's|^prefix=$|prefix=C:/sfcgal|' C:/sfcgal/lib/pkgconfig/sfcgal.pc
-          echo "--- sfcgal.pc ---"
-          cat C:/sfcgal/lib/pkgconfig/sfcgal.pc
-
-      - name: Verify SFCGAL version
-        run: |
-          export PKG_CONFIG_PATH="C:/sfcgal/lib/pkgconfig"
-          pkg-config --modversion sfcgal || echo "pkg-config binary not available (SPM has built-in parser)"
+          echo "=== Checking SFCGAL headers ==="
           ls C:/sfcgal/include/SFCGAL/version.h
+          echo "=== Checking SFCGAL libraries ==="
+          ls C:/sfcgal/lib/SFCGAL* || ls C:/sfcgal/lib/libSFCGAL* || true
+          ls C:/sfcgal/lib/*.lib || true
+          echo "=== Checking SFCGAL binaries ==="
+          ls C:/sfcgal/bin/*.dll || true
 
       - name: Build
         run: |
-          export PKG_CONFIG_PATH="C:/sfcgal/lib/pkgconfig"
-          swift build
+          # Bypass pkg-config on Windows — SPM's built-in parser can't handle
+          # the empty prefix= that SFCGAL's CMake generates in sfcgal.pc.
+          # Pass include/library paths and link flags directly instead.
+          swift build \
+            -Xcc -IC:/sfcgal/include \
+            -Xlinker -LC:/sfcgal/lib \
+            -Xlinker -lSFCGAL
 
       - name: Run tests
         run: |
-          export PKG_CONFIG_PATH="C:/sfcgal/lib/pkgconfig"
           export PATH="C:/sfcgal/bin:$PATH"
-          swift test
+          swift test \
+            -Xcc -IC:/sfcgal/include \
+            -Xlinker -LC:/sfcgal/lib \
+            -Xlinker -lSFCGAL
 
   test-linux:
     name: Swift on Linux
