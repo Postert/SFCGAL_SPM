@@ -69,15 +69,19 @@ jobs:
 
       - name: Build SFCGAL from source
         if: steps.cache-sfcgal.outputs.cache-hit != 'true'
+        shell: cmd
         run: |
-          curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz" | tar xz
-          cd SFCGAL-v${SFCGAL_VERSION}
-          cmake -B build -G Ninja \
-            -DCMAKE_INSTALL_PREFIX=C:/sfcgal \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DSFCGAL_BUILD_TESTS=OFF \
-            -DSFCGAL_BUILD_EXAMPLES=OFF \
+          curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v%SFCGAL_VERSION%/SFCGAL-v%SFCGAL_VERSION%.tar.gz" | tar xz
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          cd SFCGAL-v%SFCGAL_VERSION%
+          cmake -B build -G Ninja ^
+            -DCMAKE_C_COMPILER=cl ^
+            -DCMAKE_CXX_COMPILER=cl ^
+            -DCMAKE_INSTALL_PREFIX=C:/sfcgal ^
+            -DCMAKE_BUILD_TYPE=Release ^
+            -DCMAKE_TOOLCHAIN_FILE=%VCPKG_INSTALLATION_ROOT%/scripts/buildsystems/vcpkg.cmake ^
+            -DSFCGAL_BUILD_TESTS=OFF ^
+            -DSFCGAL_BUILD_EXAMPLES=OFF ^
             -DSFCGAL_BUILD_BENCH=OFF
           cmake --build build --parallel
           cmake --install build
