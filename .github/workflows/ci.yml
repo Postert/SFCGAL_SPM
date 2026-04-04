@@ -100,19 +100,22 @@ jobs:
         run: |
           # Bypass pkg-config on Windows — SPM's built-in parser can't handle
           # the empty prefix= that SFCGAL's CMake generates in sfcgal.pc.
-          # Pass include/library paths and link flags directly instead.
+          # Pass include/library paths directly. The modulemap's link "SFCGAL"
+          # directive handles linking; lld-link ignores GNU-style -lSFCGAL.
           swift build \
             -Xcc -IC:/sfcgal/include \
-            -Xlinker -LC:/sfcgal/lib \
-            -Xlinker -lSFCGAL
+            -Xlinker -LIBPATH:C:/sfcgal/lib \
+            -Xlinker -LIBPATH:C:/vcpkg/installed/x64-windows/lib
 
       - name: Run tests
         run: |
-          export PATH="C:/sfcgal/bin:$PATH"
+          # Add SFCGAL + vcpkg DLL dirs to PATH so the test binary can load
+          # SFCGAL.dll and its dependencies (boost, mpfr, gmp) at runtime.
+          export PATH="C:/sfcgal/bin:/c/vcpkg/installed/x64-windows/bin:$PATH"
           swift test \
             -Xcc -IC:/sfcgal/include \
-            -Xlinker -LC:/sfcgal/lib \
-            -Xlinker -lSFCGAL
+            -Xlinker -LIBPATH:C:/sfcgal/lib \
+            -Xlinker -LIBPATH:C:/vcpkg/installed/x64-windows/lib
 
   test-linux:
     name: Swift on Linux
