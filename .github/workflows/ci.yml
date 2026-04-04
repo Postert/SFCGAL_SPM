@@ -58,10 +58,7 @@ jobs:
 
       - name: Install CGAL dependencies via vcpkg
         run: |
-          vcpkg install yasm-tool:x86-windows
-          vcpkg install cgal:x64-windows
-        env:
-          VCPKG_DEFAULT_TRIPLET: x64-windows
+          vcpkg install cgal:x64-windows boost-serialization:x64-windows
 
       - name: Cache SFCGAL build
         id: cache-sfcgal
