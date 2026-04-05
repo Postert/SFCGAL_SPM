@@ -169,7 +169,7 @@ jobs:
         shell: bash
         run: |
           HEADER="${SFCGAL_PREFIX}/include/SFCGAL/version.h"
-          INSTALLED=$(grep -Po '#define SFCGAL_VERSION "\K[^"]+' "$HEADER")
+          INSTALLED=$(sed -n 's/.*#define SFCGAL_VERSION "\([^"]*\)".*/\1/p' "$HEADER")
           echo "Installed: $INSTALLED (required: $SFCGAL_VERSION)"
           [ "$INSTALLED" = "$SFCGAL_VERSION" ] || {
             echo "::error::SFCGAL version mismatch: expected $SFCGAL_VERSION, got $INSTALLED"
