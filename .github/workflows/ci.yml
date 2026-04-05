@@ -57,15 +57,21 @@ jobs:
         run: swift --version
 
       - name: Install CGAL dependencies via vcpkg
+        id: vcpkg-install
+        shell: cmd
         run: |
           vcpkg install cgal:x64-windows boost-serialization:x64-windows
+          :: Capture installed boost version so SFCGAL cache is invalidated
+          :: whenever vcpkg's baseline moves (prevents DLL version mismatch
+          :: between SFCGAL.dll and the boost DLLs on PATH at runtime).
+          for /f "delims=" %%F in ('dir /b C:\vcpkg\installed\x64-windows\bin\boost_serialization-*.dll') do @echo boost-dll=%%F>> %GITHUB_OUTPUT%
 
       - name: Cache SFCGAL build
         id: cache-sfcgal
         uses: actions/cache@v4
         with:
           path: C:/sfcgal
-          key: sfcgal-${{ env.SFCGAL_VERSION }}-windows-${{ runner.arch }}-v2
+          key: sfcgal-${{ env.SFCGAL_VERSION }}-windows-${{ runner.arch }}-${{ steps.vcpkg-install.outputs.boost-dll }}
 
       - name: Build SFCGAL from source
         if: steps.cache-sfcgal.outputs.cache-hit != 'true'
@@ -111,16 +117,12 @@ jobs:
           set "INCLUDE=C:\sfcgal\include;%INCLUDE%"
           swift build -Xcc -IC:/sfcgal/include
 
-      - name: Inspect DLL dependencies
+      - name: Verify DLL dependencies match
         shell: cmd
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
           echo === SFCGAL.dll direct dependencies ===
           dumpbin /DEPENDENTS C:\sfcgal\bin\SFCGAL.dll
-          echo === DLLs in C:\sfcgal\bin ===
-          dir /B C:\sfcgal\bin\*.dll
-          echo === DLLs in C:\vcpkg\installed\x64-windows\bin ===
-          dir /B C:\vcpkg\installed\x64-windows\bin\*.dll
 
       - name: Run tests
         shell: cmd
@@ -131,16 +133,7 @@ jobs:
           set "PATH=C:\sfcgal\bin;C:\vcpkg\installed\x64-windows\bin;%PATH%"
           set "LIB=C:\sfcgal\lib;C:\vcpkg\installed\x64-windows\lib;%LIB%"
           set "INCLUDE=C:\sfcgal\include;%INCLUDE%"
-          swift test -Xcc -IC:/sfcgal/include -v || (
-            echo === swift test failed; trying to run xctest binary directly ===
-            dir /S /B .build\*.xctest
-            for /r .build %%F in (*.xctest) do (
-              echo Running: %%F
-              "%%F"
-              echo Exit code: !errorlevel!
-            )
-            exit /b 1
-          )
+          swift test -Xcc -IC:/sfcgal/include
 
   test-linux:
     name: Swift on Linux
