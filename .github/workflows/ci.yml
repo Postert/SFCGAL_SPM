@@ -111,6 +111,17 @@ jobs:
           set "INCLUDE=C:\sfcgal\include;%INCLUDE%"
           swift build -Xcc -IC:/sfcgal/include
 
+      - name: Inspect DLL dependencies
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          echo === SFCGAL.dll direct dependencies ===
+          dumpbin /DEPENDENTS C:\sfcgal\bin\SFCGAL.dll
+          echo === DLLs in C:\sfcgal\bin ===
+          dir /B C:\sfcgal\bin\*.dll
+          echo === DLLs in C:\vcpkg\installed\x64-windows\bin ===
+          dir /B C:\vcpkg\installed\x64-windows\bin\*.dll
+
       - name: Run tests
         shell: cmd
         run: |
@@ -120,7 +131,16 @@ jobs:
           set "PATH=C:\sfcgal\bin;C:\vcpkg\installed\x64-windows\bin;%PATH%"
           set "LIB=C:\sfcgal\lib;C:\vcpkg\installed\x64-windows\lib;%LIB%"
           set "INCLUDE=C:\sfcgal\include;%INCLUDE%"
-          swift test -Xcc -IC:/sfcgal/include
+          swift test -Xcc -IC:/sfcgal/include -v || (
+            echo === swift test failed; trying to run xctest binary directly ===
+            dir /S /B .build\*.xctest
+            for /r .build %%F in (*.xctest) do (
+              echo Running: %%F
+              "%%F"
+              echo Exit code: !errorlevel!
+            )
+            exit /b 1
+          )
 
   test-linux:
     name: Swift on Linux
