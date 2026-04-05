@@ -97,25 +97,26 @@ jobs:
           ls C:/sfcgal/bin/*.dll || true
 
       - name: Build
+        shell: cmd
         run: |
-          # Bypass pkg-config on Windows — SPM's built-in parser can't handle
-          # the empty prefix= that SFCGAL's CMake generates in sfcgal.pc.
-          # Pass include/library paths directly. The modulemap's link "SFCGAL"
-          # directive handles linking; lld-link ignores GNU-style -lSFCGAL.
-          swift build \
-            -Xcc -IC:/sfcgal/include \
-            -Xlinker -LIBPATH:C:/sfcgal/lib \
-            -Xlinker -LIBPATH:C:/vcpkg/installed/x64-windows/lib
+          :: Bypass pkg-config on Windows — SPM's built-in parser can't handle
+          :: the empty prefix= that SFCGAL's CMake generates in sfcgal.pc.
+          :: Use the LIB env var (native to MSVC/lld-link) for the library
+          :: search path, and INCLUDE/-Xcc -I for headers. The modulemap's
+          :: link "SFCGAL" directive handles actually linking SFCGAL.lib.
+          set "LIB=C:\sfcgal\lib;C:\vcpkg\installed\x64-windows\lib;%LIB%"
+          set "INCLUDE=C:\sfcgal\include;%INCLUDE%"
+          swift build -Xcc -IC:/sfcgal/include
 
       - name: Run tests
+        shell: cmd
         run: |
-          # Add SFCGAL + vcpkg DLL dirs to PATH so the test binary can load
-          # SFCGAL.dll and its dependencies (boost, mpfr, gmp) at runtime.
-          export PATH="C:/sfcgal/bin:/c/vcpkg/installed/x64-windows/bin:$PATH"
-          swift test \
-            -Xcc -IC:/sfcgal/include \
-            -Xlinker -LIBPATH:C:/sfcgal/lib \
-            -Xlinker -LIBPATH:C:/vcpkg/installed/x64-windows/lib
+          :: Add SFCGAL + vcpkg DLL dirs to PATH so the test binary can load
+          :: SFCGAL.dll and its dependencies (boost, mpfr, gmp) at runtime.
+          set "PATH=C:\sfcgal\bin;C:\vcpkg\installed\x64-windows\bin;%PATH%"
+          set "LIB=C:\sfcgal\lib;C:\vcpkg\installed\x64-windows\lib;%LIB%"
+          set "INCLUDE=C:\sfcgal\include;%INCLUDE%"
+          swift test -Xcc -IC:/sfcgal/include
 
   test-linux:
     name: Swift on Linux
