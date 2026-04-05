@@ -77,6 +77,15 @@ jobs:
         if: steps.cache-sfcgal.outputs.cache-hit != 'true'
         shell: cmd
         run: |
+          :: GitHub's Windows runner ships pre-installed Boost (e.g. 1.86 at
+          :: C:\local\boost_1_86_0) which CMake's FindBoost picks up via
+          :: BOOST_ROOT* env vars, overriding our vcpkg-provided Boost and
+          :: causing DLL-version mismatches at runtime. Clear them so only
+          :: vcpkg's Boost is visible to CMake.
+          set "BOOST_ROOT="
+          set "BOOST_INCLUDEDIR="
+          set "BOOST_LIBRARYDIR="
+          for /f "delims==" %%V in ('set BOOST_ROOT_ 2^>nul') do set "%%V="
           curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v%SFCGAL_VERSION%/SFCGAL-v%SFCGAL_VERSION%.tar.gz" | tar xz
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
           cd SFCGAL-v%SFCGAL_VERSION%
@@ -86,6 +95,8 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=C:/sfcgal ^
             -DCMAKE_BUILD_TYPE=Release ^
             -DCMAKE_TOOLCHAIN_FILE=%VCPKG_INSTALLATION_ROOT%/scripts/buildsystems/vcpkg.cmake ^
+            -DBoost_NO_BOOST_CMAKE=OFF ^
+            -DBoost_NO_SYSTEM_PATHS=ON ^
             -DSFCGAL_BUILD_TESTS=OFF ^
             -DSFCGAL_BUILD_EXAMPLES=OFF ^
             -DSFCGAL_BUILD_BENCH=OFF
