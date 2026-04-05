@@ -101,9 +101,12 @@ jobs:
         run: |
           :: Bypass pkg-config on Windows — SPM's built-in parser can't handle
           :: the empty prefix= that SFCGAL's CMake generates in sfcgal.pc.
-          :: Use the LIB env var (native to MSVC/lld-link) for the library
-          :: search path, and INCLUDE/-Xcc -I for headers. The modulemap's
-          :: link "SFCGAL" directive handles actually linking SFCGAL.lib.
+          :: We need vcvars64 to populate the MSVC CRT LIB/INCLUDE paths
+          :: (Swift needs them to compile the Package.swift manifest). Then
+          :: we PREPEND our SFCGAL + vcpkg paths so lld-link can find
+          :: SFCGAL.lib and transitive deps. The modulemap's link "SFCGAL"
+          :: directive handles actually linking SFCGAL.lib.
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
           set "LIB=C:\sfcgal\lib;C:\vcpkg\installed\x64-windows\lib;%LIB%"
           set "INCLUDE=C:\sfcgal\include;%INCLUDE%"
           swift build -Xcc -IC:/sfcgal/include
@@ -113,6 +116,7 @@ jobs:
         run: |
           :: Add SFCGAL + vcpkg DLL dirs to PATH so the test binary can load
           :: SFCGAL.dll and its dependencies (boost, mpfr, gmp) at runtime.
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
           set "PATH=C:\sfcgal\bin;C:\vcpkg\installed\x64-windows\bin;%PATH%"
           set "LIB=C:\sfcgal\lib;C:\vcpkg\installed\x64-windows\lib;%LIB%"
           set "INCLUDE=C:\sfcgal\include;%INCLUDE%"
