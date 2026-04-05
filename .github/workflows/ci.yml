@@ -56,36 +56,17 @@ jobs:
       - name: Swift version
         run: swift --version
 
-      - name: Install CGAL dependencies via vcpkg
-        id: vcpkg-install
-        shell: cmd
-        run: |
-          vcpkg install cgal:x64-windows boost-serialization:x64-windows
-          :: Capture installed boost version so SFCGAL cache is invalidated
-          :: whenever vcpkg's baseline moves (prevents DLL version mismatch
-          :: between SFCGAL.dll and the boost DLLs on PATH at runtime).
-          for /f "delims=" %%F in ('dir /b C:\vcpkg\installed\x64-windows\bin\boost_serialization-*.dll') do @echo boost-dll=%%F>> %GITHUB_OUTPUT%
-
       - name: Cache SFCGAL build
         id: cache-sfcgal
         uses: actions/cache@v4
         with:
           path: C:/sfcgal
-          key: sfcgal-${{ env.SFCGAL_VERSION }}-windows-${{ runner.arch }}-${{ steps.vcpkg-install.outputs.boost-dll }}
+          key: sfcgal-${{ env.SFCGAL_VERSION }}-windows-${{ runner.arch }}-v3-bundled
 
       - name: Build SFCGAL from source
         if: steps.cache-sfcgal.outputs.cache-hit != 'true'
         shell: cmd
         run: |
-          :: GitHub's Windows runner ships pre-installed Boost (e.g. 1.86 at
-          :: C:\local\boost_1_86_0) which CMake's FindBoost picks up via
-          :: BOOST_ROOT* env vars, overriding our vcpkg-provided Boost and
-          :: causing DLL-version mismatches at runtime. Clear them so only
-          :: vcpkg's Boost is visible to CMake.
-          set "BOOST_ROOT="
-          set "BOOST_INCLUDEDIR="
-          set "BOOST_LIBRARYDIR="
-          for /f "delims==" %%V in ('set BOOST_ROOT_ 2^>nul') do set "%%V="
           curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v%SFCGAL_VERSION%/SFCGAL-v%SFCGAL_VERSION%.tar.gz" | tar xz
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
           cd SFCGAL-v%SFCGAL_VERSION%
@@ -95,13 +76,16 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=C:/sfcgal ^
             -DCMAKE_BUILD_TYPE=Release ^
             -DCMAKE_TOOLCHAIN_FILE=%VCPKG_INSTALLATION_ROOT%/scripts/buildsystems/vcpkg.cmake ^
-            -DBoost_NO_BOOST_CMAKE=OFF ^
-            -DBoost_NO_SYSTEM_PATHS=ON ^
             -DSFCGAL_BUILD_TESTS=OFF ^
             -DSFCGAL_BUILD_EXAMPLES=OFF ^
             -DSFCGAL_BUILD_BENCH=OFF
           cmake --build build --parallel
           cmake --install build
+          :: SFCGAL's vcpkg.json uses manifest mode with a pinned baseline
+          :: (Boost 1.86) that differs from the global vcpkg install (1.90).
+          :: Copy the DLLs SFCGAL actually linked against into C:\sfcgal\bin
+          :: so they're discoverable at runtime from a single directory.
+          copy /Y build\vcpkg_installed\x64-windows\bin\*.dll C:\sfcgal\bin\
 
       - name: Verify SFCGAL installation
         run: |
@@ -119,12 +103,11 @@ jobs:
           :: Bypass pkg-config on Windows — SPM's built-in parser can't handle
           :: the empty prefix= that SFCGAL's CMake generates in sfcgal.pc.
           :: We need vcvars64 to populate the MSVC CRT LIB/INCLUDE paths
-          :: (Swift needs them to compile the Package.swift manifest). Then
-          :: we PREPEND our SFCGAL + vcpkg paths so lld-link can find
-          :: SFCGAL.lib and transitive deps. The modulemap's link "SFCGAL"
-          :: directive handles actually linking SFCGAL.lib.
+          :: (Swift needs them to compile the Package.swift manifest), then
+          :: prepend SFCGAL's include/lib so lld-link can find SFCGAL.lib.
+          :: The modulemap's link "SFCGAL" directive handles the actual link.
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          set "LIB=C:\sfcgal\lib;C:\vcpkg\installed\x64-windows\lib;%LIB%"
+          set "LIB=C:\sfcgal\lib;%LIB%"
           set "INCLUDE=C:\sfcgal\include;%INCLUDE%"
           swift build -Xcc -IC:/sfcgal/include
 
@@ -138,11 +121,11 @@ jobs:
       - name: Run tests
         shell: cmd
         run: |
-          :: Add SFCGAL + vcpkg DLL dirs to PATH so the test binary can load
-          :: SFCGAL.dll and its dependencies (boost, mpfr, gmp) at runtime.
+          :: Add SFCGAL bin to PATH so the test binary can load SFCGAL.dll
+          :: and its bundled dependencies (boost, mpfr, gmp) at runtime.
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          set "PATH=C:\sfcgal\bin;C:\vcpkg\installed\x64-windows\bin;%PATH%"
-          set "LIB=C:\sfcgal\lib;C:\vcpkg\installed\x64-windows\lib;%LIB%"
+          set "PATH=C:\sfcgal\bin;%PATH%"
+          set "LIB=C:\sfcgal\lib;%LIB%"
           set "INCLUDE=C:\sfcgal\include;%INCLUDE%"
           swift test -Xcc -IC:/sfcgal/include
 
