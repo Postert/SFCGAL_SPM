@@ -17,9 +17,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: swift-actions/setup-swift@v3
-        with:
-          swift-version: "6"
+      # macOS runners ship Xcode with Swift pre-installed. No setup
+      # action needed — just use whatever the runner provides.
+      - name: Swift version
+        run: swift --version
 
       - name: Install SFCGAL
         run: brew install sfcgal
@@ -61,7 +62,7 @@ jobs:
 
       - uses: swift-actions/setup-swift@v3
         with:
-          swift-version: "6"
+          swift-version: "6.1"
 
       - name: Install SFCGAL build dependencies
         run: |
@@ -125,9 +126,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: swift-actions/setup-swift@v3
+      # swift-actions/setup-swift@v3 does not support Windows yet.
+      # compnerd/gha-setup-swift is maintained by Saleem Abdulrasool
+      # (Swift Core Team member and Windows release manager).
+      - uses: compnerd/gha-setup-swift@main
         with:
-          swift-version: "6"
+          swift-version: swift-6.1-release
+          swift-build: 6.1-RELEASE
+
+      - name: Swift version
+        shell: bash
+        run: swift --version
 
       - name: Cache SFCGAL build
         id: cache-sfcgal
