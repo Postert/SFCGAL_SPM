@@ -19,8 +19,7 @@ jobs:
 
       - uses: swift-actions/setup-swift@v3
         with:
-          swift-version: "6.2.4"
-          skip-verify-signature: true
+          swift-version: "6"
 
       - name: Install SFCGAL
         run: brew install sfcgal
@@ -62,8 +61,7 @@ jobs:
 
       - uses: swift-actions/setup-swift@v3
         with:
-          swift-version: "6.2.4"
-          skip-verify-signature: true
+          swift-version: "6"
 
       - name: Install SFCGAL build dependencies
         run: |
@@ -78,7 +76,7 @@ jobs:
 
       - name: Cache SFCGAL build
         id: cache-sfcgal
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.SFCGAL_PREFIX }}
           key: sfcgal-${{ env.SFCGAL_VERSION }}-ubuntu-${{ runner.arch }}
@@ -127,14 +125,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: compnerd/gha-setup-swift@main
+      - uses: swift-actions/setup-swift@v3
         with:
-          branch: swift-6.1-release
-          tag: 6.1-RELEASE
+          swift-version: "6"
 
       - name: Cache SFCGAL build
         id: cache-sfcgal
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.SFCGAL_PREFIX }}
           # Bump the suffix to invalidate whenever the build recipe changes
