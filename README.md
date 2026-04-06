@@ -1,10 +1,10 @@
 # SwiftSFCGAL
 
-A Swift Package wrapping the [SFCGAL](https://sfcgal.gitlab.io/SFCGAL/) computational geometry library for iOS, macOS, and Linux.
+A Swift Package wrapping the [SFCGAL](https://sfcgal.gitlab.io/SFCGAL/) computational geometry library for iOS, macOS, Linux, and Windows.
 
 ## Overview
 
-SwiftSFCGAL provides idiomatic Swift access to SFCGAL's full suite of 2D and 3D computational geometry operations — triangulation, Boolean operations, measurements, straight skeletons, extrusions, and more. It is designed primarily for iOS (ARKit/RealityKit pipelines, CityGML rendering), with macOS and Linux as secondary targets.
+SwiftSFCGAL provides idiomatic Swift access to SFCGAL's full suite of 2D and 3D computational geometry operations — triangulation, Boolean operations, measurements, straight skeletons, extrusions, and more. It is designed primarily for iOS (ARKit/RealityKit pipelines, CityGML rendering), with macOS, Linux, and Windows as secondary targets.
 
 SFCGAL is a C++ library built on top of [CGAL](https://www.cgal.org/) (the Computational Geometry Algorithms Library) that provides ISO 19107:2013 and OGC Simple Features Access 1.2 compliant geometry types and operations. It serves as the geometry backend for PostGIS's 3D spatial functions and is an [OSGeo project](https://www.osgeo.org/projects/sfcgal/).
 
@@ -13,8 +13,20 @@ SFCGAL is a C++ library built on top of [CGAL](https://www.cgal.org/) (the Compu
 | Platform | Toolchain | SFCGAL source |
 |----------|-----------|---------------|
 | macOS    | Xcode 16+ | System library via Homebrew |
-| Linux (Ubuntu/Debian) | [Swift.org toolchain](https://www.swift.org/install/linux/) | System library via apt |
-| iOS / visionOS | Xcode 16+ | Bundled XCFramework |
+| Linux (Ubuntu/Debian) | [Swift.org toolchain](https://www.swift.org/install/linux/) | Built from source (Ubuntu's apt ships an older version) |
+| Windows  | [Swift.org toolchain](https://www.swift.org/install/windows/) + Visual Studio 2022 | Built from source with vcpkg dependencies |
+| iOS / tvOS / watchOS / visionOS | Xcode 16+ | Prebuilt XCFrameworks (downloaded automatically by SPM) |
+
+## Version pinning
+
+SwiftSFCGAL pins an **exact** SFCGAL version (currently **2.2.0**) and enforces this at compile time via a C++ `static_assert` in [`version_check.cc`](Sources/CSFCGAL_Shim/version_check.cc). If the installed SFCGAL version does not match, the build fails with a clear error message. This guarantees that the Swift wrapper, the system library, and the iOS XCFrameworks are always binary-compatible.
+
+The required version is defined in a single place:
+
+```c
+// Sources/CSFCGAL_Shim/include/sfcgal_swift_shim.h
+#define SWIFTSFCGAL_REQUIRED_VERSION "2.2.0"
+```
 
 ## Usage
 
@@ -22,7 +34,7 @@ Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/<owner>/SwiftSFCGAL.git", from: "0.1.0")
+    .package(url: "https://github.com/Postert/SFCGAL_SPM.git", from: "0.1.0")
 ]
 ```
 
@@ -37,15 +49,164 @@ Then add `"SwiftSFCGAL"` as a dependency of your target:
 )
 ```
 
+## Development setup
+
+### Prerequisites
+
+| Platform | Swift | Additional tooling |
+|----------|-------|--------------------|
+| macOS | Included with Xcode 16+ | [Homebrew](https://brew.sh/) |
+| Linux | [Swift.org toolchain](https://www.swift.org/install/linux/) (6.1+) | `cmake`, `pkg-config`, C/C++ compiler |
+| Windows | [Swift.org toolchain](https://www.swift.org/install/windows/) (6.1+) | Visual Studio 2022, [vcpkg](https://vcpkg.io/), CMake, Ninja |
+| iOS | Included with Xcode 16+ | None — XCFrameworks are downloaded automatically |
+
+### macOS
+
+SFCGAL is available via Homebrew as a single install:
+
+```bash
+brew install sfcgal
+
+# Verify the installed version matches the one pinned by SwiftSFCGAL (2.2.0):
+pkg-config --modversion sfcgal
+
+# Build and test:
+swift build
+swift test
+```
+
+> **Tip:** You can also open the package in Xcode and build/test from there.
+
+### Linux (Ubuntu / Debian)
+
+Ubuntu's `apt` repositories ship an older SFCGAL (1.5.1 on 24.04 LTS), which does not match the pinned version. You need to build SFCGAL **2.2.0** from source.
+
+**1. Install build dependencies:**
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+    cmake \
+    libcgal-dev \
+    libboost-serialization-dev \
+    libgmp-dev \
+    libmpfr-dev \
+    pkg-config
+```
+
+**2. Build and install SFCGAL 2.2.0:**
+
+```bash
+SFCGAL_VERSION=2.2.0
+SFCGAL_PREFIX=/usr/local/sfcgal
+
+curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz" | tar xz
+cd SFCGAL-v${SFCGAL_VERSION}
+cmake -B build \
+    -DCMAKE_INSTALL_PREFIX=${SFCGAL_PREFIX} \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DSFCGAL_BUILD_TESTS=OFF \
+    -DSFCGAL_BUILD_EXAMPLES=OFF \
+    -DSFCGAL_BUILD_BENCH=OFF
+cmake --build build --parallel $(nproc)
+sudo cmake --install build
+```
+
+**3. Build and test SwiftSFCGAL:**
+
+Since SFCGAL is installed to a custom prefix, you need to tell SPM and the dynamic linker where to find it:
+
+```bash
+export PKG_CONFIG_PATH="${SFCGAL_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
+export LD_LIBRARY_PATH="${SFCGAL_PREFIX}/lib:$LD_LIBRARY_PATH"
+
+# Verify:
+pkg-config --modversion sfcgal   # should print 2.2.0
+
+# Build and test:
+swift build
+swift test
+```
+
+### Windows
+
+Windows requires Visual Studio 2022 (for the MSVC toolchain and CRT headers), the [Swift.org toolchain for Windows](https://www.swift.org/install/windows/), and [vcpkg](https://vcpkg.io/) for the transitive C++ dependencies (CGAL, Boost, GMP, MPFR).
+
+**1. Build and install SFCGAL 2.2.0 from source:**
+
+Open a **Developer Command Prompt for VS 2022** (or run `vcvars64.bat` manually) and run:
+
+```cmd
+set SFCGAL_VERSION=2.2.0
+set SFCGAL_PREFIX=C:\sfcgal
+
+curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v%SFCGAL_VERSION%/SFCGAL-v%SFCGAL_VERSION%.tar.gz" | tar xz
+cd SFCGAL-v%SFCGAL_VERSION%
+
+cmake -B build -G Ninja ^
+    -DCMAKE_C_COMPILER=cl ^
+    -DCMAKE_CXX_COMPILER=cl ^
+    -DCMAKE_INSTALL_PREFIX=%SFCGAL_PREFIX% ^
+    -DCMAKE_BUILD_TYPE=Release ^
+    -DCMAKE_TOOLCHAIN_FILE=%VCPKG_INSTALLATION_ROOT%\scripts\buildsystems\vcpkg.cmake ^
+    -DSFCGAL_BUILD_TESTS=OFF ^
+    -DSFCGAL_BUILD_EXAMPLES=OFF ^
+    -DSFCGAL_BUILD_BENCH=OFF
+cmake --build build --parallel
+cmake --install build
+```
+
+> **Note:** SFCGAL ships its own `vcpkg.json` (manifest mode), so vcpkg automatically downloads and builds the correct versions of CGAL, Boost, GMP, and MPFR during the CMake configure step. No manual `vcpkg install` is needed.
+
+**2. Bundle runtime DLLs:**
+
+SFCGAL's vcpkg manifest pins specific dependency versions (e.g. Boost 1.86) that may differ from a global vcpkg install. Copy the DLLs that SFCGAL was actually linked against into the install directory so the Windows loader can find them at runtime:
+
+```cmd
+copy /Y build\vcpkg_installed\x64-windows\bin\*.dll %SFCGAL_PREFIX%\bin\
+```
+
+**3. Build and test SwiftSFCGAL:**
+
+SPM's built-in pkg-config parser cannot handle the `.pc` file that SFCGAL's CMake generates on Windows (it has an empty `prefix=` variable). Instead, pass paths through the native MSVC environment variables. From a **Developer Command Prompt**:
+
+```cmd
+set "PATH=%SFCGAL_PREFIX%\bin;%PATH%"
+set "LIB=%SFCGAL_PREFIX%\lib;%LIB%"
+set "INCLUDE=%SFCGAL_PREFIX%\include;%INCLUDE%"
+
+swift build -Xcc -I%SFCGAL_PREFIX%/include
+swift test  -Xcc -I%SFCGAL_PREFIX%/include
+```
+
+> **Note:** The `vcvars64.bat` path varies by Visual Studio edition:
+> - **Community:** `C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat`
+> - **Professional:** replace `Community` with `Professional`
+> - **Enterprise:** replace `Community` with `Enterprise`
+
+### iOS / tvOS / watchOS / visionOS
+
+**No setup required.** The prebuilt XCFrameworks (SFCGAL, GMP, MPFR) are hosted on GitHub releases and downloaded automatically by SPM when you add the package. Just add the dependency to your Xcode project or `Package.swift` and build.
+
+To verify the iOS build from the command line:
+
+```bash
+xcodebuild build \
+    -scheme SwiftSFCGAL \
+    -destination 'generic/platform=iOS Simulator'
+```
+
+If you need to rebuild the XCFrameworks from source (e.g. to target a different SFCGAL version), see [`scripts/create-xcframeworks.sh`](scripts/create-xcframeworks.sh) and the [build-xcframeworks workflow](.github/workflows/build-xcframeworks.yml).
+
 ## Architecture
 
-### Why a C API bridge (not Swift–C++ interop)
+### Why a C API bridge (not Swift-C++ interop)
 
 SFCGAL depends on CGAL, which is one of the most template-heavy C++ libraries in existence. Swift's C++ interoperability (introduced in Swift 5.9) **cannot import uninstantiated C++ templates** — it only supports explicitly pre-instantiated specializations exposed via `typedef` or `using`. CGAL's architecture is built entirely on template metaprogramming: geometric kernels parameterized on number types, traits classes, template template parameters, and deep Boost dependency chains. Additional unsupported features critical to CGAL include rvalue references, C++ exceptions, variadic templates, and `std::function`.
 
-Attempting to pre-instantiate all needed CGAL types is impractical given the sheer volume and interdependency of CGAL's template graph. **Direct Swift–C++ interop with CGAL is a dead end.**
+Attempting to pre-instantiate all needed CGAL types is impractical given the sheer volume and interdependency of CGAL's template graph. **Direct Swift-C++ interop with CGAL is a dead end.**
 
-Instead, this package bridges through **SFCGAL's existing C API** (`sfcgal_c.h`), which uses the opaque pointer pattern — all geometry types are represented as `typedef void sfcgal_geometry_t*` with create/access/delete functions. This C API covers roughly 70–80% of SFCGAL's full functionality and is the same API used by PostGIS, PySFCGAL (Python), and sfcgal-rs (Rust).
+Instead, this package bridges through **SFCGAL's existing C API** (`sfcgal_c.h`), which uses the opaque pointer pattern — all geometry types are represented as `typedef void sfcgal_geometry_t*` with create/access/delete functions. This C API covers roughly 70-80% of SFCGAL's full functionality and is the same API used by PostGIS, PySFCGAL (Python), and sfcgal-rs (Rust).
 
 **Performance impact: zero.** C function calls from Swift have no measurable overhead in release builds. The computational geometry operations themselves (triangulation, Boolean ops, etc.) are orders of magnitude more expensive than the function-call boundary.
 
@@ -78,65 +239,52 @@ The SFCGAL C API (`sfcgal_c.h`) exposes:
 
 ### Package structure
 
-The package uses a **hybrid architecture** with platform-conditional dependencies (SE-0273):
+The package uses a **hybrid architecture** with platform-conditional dependencies ([SE-0273](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0273-swiftpm-conditional-target-dependencies.md)):
 
 ```
 SwiftSFCGAL/
-├── Package.swift                    # Hybrid: systemLibrary (macOS/Linux) + binaryTarget (iOS)
+├── Package.swift                       # Hybrid: systemLibrary + binaryTarget
 ├── Sources/
-│   ├── CSFCGAL_System/              # systemLibrary target (macOS/Linux)
+│   ├── CSFCGAL_System/                 # systemLibrary target (macOS/Linux/Windows)
 │   │   ├── module.modulemap
-│   │   └── sfcgal_shim.h            # Umbrella header
-│   ├── CSFCGAL_Shim/                # Custom C shims (error handling, batch ops)
+│   │   └── sfcgal_shim.h              # Umbrella header (#include <SFCGAL/capi/sfcgal_c.h>)
+│   ├── CSFCGAL_Shim/                   # Cross-platform C shim layer
 │   │   ├── include/
-│   │   │   └── sfcgal_swift_shim.h
-│   │   └── sfcgal_swift_shim.c
-│   └── SwiftSFCGAL/                 # Idiomatic Swift wrapper layer
-│       ├── Geometry.swift            # Base geometry class (RAII via deinit)
-│       ├── Point.swift
-│       ├── Polygon.swift
-│       ├── Operations.swift          # Spatial operations
-│       ├── IO.swift                  # WKT/WKB I/O
-│       └── ...
-├── SFCGAL.xcframework/              # Prebuilt static libraries for iOS
-├── GMP.xcframework/
-├── MPFR.xcframework/
-└── Tests/
-    └── SwiftSFCGALTests/
+│   │   │   └── sfcgal_swift_shim.h    # Public header + SWIFTSFCGAL_REQUIRED_VERSION
+│   │   ├── sfcgal_swift_shim.c        # Empty .c so SPM recognizes the target
+│   │   └── version_check.cc           # Compile-time static_assert on SFCGAL version
+│   └── SwiftSFCGAL/
+│       └── SwiftSFCGAL.swift           # Public Swift API
+├── Tests/
+│   └── SwiftSFCGALTests/
+│       └── SwiftSFCGALTests.swift
+├── scripts/
+│   └── create-xcframeworks.sh          # Builds iOS XCFrameworks from source
+└── .github/workflows/
+    ├── ci.yml                          # CI: macOS, iOS Simulator, Linux, Windows
+    └── build-xcframeworks.yml          # Builds + publishes XCFramework releases
 ```
 
-On **macOS and Linux**, the package links against system-installed SFCGAL via `pkg-config` (e.g., `brew install sfcgal` on macOS, `apt install libsfcgal-dev` on Linux). The `CSFCGAL_System` target contains only a module map and umbrella header — no source code. These tell the Swift compiler how to import the system-installed C API:
+On **macOS, Linux, and Windows**, the package links against a locally installed SFCGAL via `pkg-config` (or, on Windows, via `LIB`/`INCLUDE` env vars). The `CSFCGAL_System` target contains only a module map and umbrella header:
 
-`Sources/CSFCGAL_System/module.modulemap`:
 ```modulemap
 module CSFCGAL_System [system] {
-    umbrella header "sfcgal_shim.h"
+    header "sfcgal_shim.h"
     link "SFCGAL"
     export *
 }
 ```
 
-`Sources/CSFCGAL_System/sfcgal_shim.h`:
-```c
-#include <SFCGAL/capi/sfcgal_c.h>
-```
+On **iOS** (and tvOS, watchOS, visionOS), there is no system library ecosystem. The package uses prebuilt XCFrameworks downloaded from GitHub releases by SPM. These contain static libraries for SFCGAL, GMP, and MPFR cross-compiled for ARM64.
 
-When SFCGAL is installed on the system, it provides a `sfcgal.pc` file (a [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) descriptor). SPM reads this file to automatically resolve the correct `-I` (header) and `-L`/`-l` (linker) flags. No manual path configuration is needed — the system package manager handles the entire dependency tree, and `pkg-config` tells SPM where everything lives.
+### Platform-specific notes
 
-| Platform | pkg-config availability |
-|----------|------------------------|
-| macOS (Homebrew) | `sfcgal.pc` installed automatically by `brew install sfcgal` |
-| Ubuntu / Debian | `sfcgal.pc` installed by `apt install libsfcgal-dev` |
-
-On **iOS** (and visionOS, tvOS, watchOS), there is no system library ecosystem. iOS apps must bundle all non-Apple code inside the `.app` directory. The package therefore includes prebuilt static libraries packaged as XCFrameworks. These are compiled from the same SFCGAL source code but cross-compiled for the iOS ARM64 architecture and platform.
-
-### Why XCFrameworks are required for iOS
-
-SPM's `.systemLibrary` with `pkgConfig` is fundamentally host-platform-only. At package resolution time, SPM's built-in pkg-config parser searches the *build machine's* filesystem for `.pc` files and extracts compiler/linker flags. These flags point to macOS-architecture binaries (e.g., `/opt/homebrew/lib/libSFCGAL.dylib`). When Xcode cross-compiles for `arm64-apple-iphoneos`, the linker rejects these macOS binaries because the `LC_BUILD_VERSION` load command encodes the platform — the linker produces: `ld: building for iOS, but linking in object file built for macOS`.
-
-There is no mechanism in SPM to make `systemLibrary` find iOS-compatible libraries. iOS has no user-installable library ecosystem, no `/usr/lib` for third-party code, and the kernel enforces code-signing at page-fault time (`CS_KILL` flag). All non-Apple code must be embedded in the `.app` bundle.
-
-Vendoring the full source tree (GMP + MPFR + Boost + CGAL + SFCGAL) into SPM is impractical because GMP requires a `./configure` step that generates platform-specific headers, Boost alone is 20,000+ header files, and clean builds would take many minutes.
+| Platform | pkg-config | How paths are resolved |
+|----------|------------|----------------------|
+| macOS (Homebrew) | `sfcgal.pc` installed by `brew install sfcgal` | Automatic via SPM's built-in pkg-config parser |
+| Ubuntu / Debian | `sfcgal.pc` generated by `cmake --install` | Automatic via SPM, with `PKG_CONFIG_PATH` pointing to the install prefix |
+| Windows | SFCGAL's `.pc` file has an empty `prefix=` that SPM cannot parse | Bypassed entirely; paths set through `LIB`/`INCLUDE` env vars and `-Xcc -I` flags |
+| iOS / tvOS / watchOS / visionOS | N/A | XCFrameworks are self-contained; no system paths needed |
 
 ## Dependency chain
 
@@ -154,7 +302,7 @@ SwiftSFCGAL (this package)
 
 ### Cross-compilation notes
 
-- **GMP** is the trickiest dependency for iOS. Its hand-tuned assembly code produces `"unknown AArch64 fixup kind!"` errors when targeting `arm64-apple-iphoneos`. The solution is `./configure --disable-assembly`, which forces generic C fallback code. This incurs a 2–5× slowdown for pure arbitrary-precision arithmetic, but the practical impact on SFCGAL operations is modest because CGAL uses interval filtering (exact arithmetic only triggers on degenerate cases).
+- **GMP** is the trickiest dependency for iOS. Its hand-tuned assembly code produces `"unknown AArch64 fixup kind!"` errors when targeting `arm64-apple-iphoneos`. The solution is `./configure --disable-assembly`, which forces generic C fallback code. This incurs a 2-5x slowdown for pure arbitrary-precision arithmetic, but the practical impact on SFCGAL operations is modest because CGAL uses interval filtering (exact arithmetic only triggers on degenerate cases).
 - **MPFR** is pure C and cross-compiles cleanly once GMP is built — just pass `--with-gmp=<path>`.
 - **CGAL** is header-only since v5.0 — no compilation needed, just include the headers.
 - **Boost** only needs headers for CGAL (no compiled Boost libraries required).
@@ -210,30 +358,18 @@ print("Area: \(area)")  // polygon and triangulated freed automatically when sco
 
 A thin C shim layer sits between the raw SFCGAL C API and Swift to handle:
 - **Error handling:** SFCGAL's default error handler calls `printf`/`abort()`. The shim installs a custom handler that captures errors into a thread-local buffer, which Swift retrieves and throws as proper Swift errors.
-- **Batch operations:** For processing large geometry datasets (e.g., hundreds of CityGML building surfaces), batch shims minimize Swift↔C boundary crossings by processing arrays of geometries in a single C call.
+- **Batch operations:** For processing large geometry datasets (e.g., hundreds of CityGML building surfaces), batch shims minimize Swift-C boundary crossings by processing arrays of geometries in a single C call.
 
-## Development setup
+## CI
 
-### macOS
+The project has automated CI on all supported platforms via GitHub Actions. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for the full workflow. The setup instructions in this README are derived directly from the CI workflow and are verified on every push.
 
-```bash
-brew install sfcgal
-# Then open in Xcode or:
-swift build
-swift test
-```
-
-### Linux (Ubuntu/Debian)
-
-```bash
-sudo apt install libsfcgal-dev
-swift build
-swift test
-```
-
-### iOS
-
-iOS builds require the prebuilt XCFrameworks to be present in the package root. See the [XCFramework build instructions](docs/xcframework-build.md) for details on cross-compiling the dependency chain.
+| Job | Runner | Swift setup |
+|-----|--------|-------------|
+| macOS | `macos-latest` | Xcode-bundled Swift |
+| iOS Simulator | `macos-latest` | Xcode-bundled Swift + `xcodebuild` |
+| Linux | `ubuntu-latest` | [swift-actions/setup-swift](https://github.com/swift-actions/setup-swift) |
+| Windows | `windows-latest` | [compnerd/gha-setup-swift](https://github.com/compnerd/gha-setup-swift) |
 
 ## Status
 

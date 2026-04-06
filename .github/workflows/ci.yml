@@ -4,27 +4,205 @@ on:
   push:
   pull_request:
 
+env:
+  # Single source of truth for the pinned SFCGAL version. Must match
+  # SWIFTSFCGAL_REQUIRED_VERSION in Sources/CSFCGAL_Shim/include/sfcgal_swift_shim.h
+  # (enforced at compile time via static_assert in version_check.cc).
+  SFCGAL_VERSION: "2.2.0"
+
 jobs:
-  test:
-    name: Swift on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+  test-macos:
+    name: Swift on macOS
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: swift-actions/setup-swift@v3
-        with:
-          swift-version: "6.2"
-          skip-verify-signature: true
-
+      # macOS runners ship Xcode with Swift pre-installed. No setup
+      # action needed — just use whatever the runner provides.
       - name: Swift version
         run: swift --version
+
+      - name: Install SFCGAL
+        run: brew install sfcgal
+
+      - name: Verify SFCGAL version
+        run: |
+          INSTALLED=$(pkg-config --modversion sfcgal)
+          echo "Installed: $INSTALLED (required: $SFCGAL_VERSION)"
+          [ "$INSTALLED" = "$SFCGAL_VERSION" ] || {
+            echo "::error::SFCGAL version mismatch: expected $SFCGAL_VERSION, got $INSTALLED"
+            exit 1
+          }
 
       - name: Build
         run: swift build
 
       - name: Run tests
         run: swift test
+
+  test-ios:
+    name: Swift on iOS Simulator
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build (iOS Simulator)
+        run: |
+          xcodebuild build \
+            -scheme SwiftSFCGAL \
+            -destination 'generic/platform=iOS Simulator'
+
+  test-linux:
+    name: Swift on Linux
+    runs-on: ubuntu-latest
+    env:
+      SFCGAL_PREFIX: /usr/local/sfcgal
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: swift-actions/setup-swift@v3
+        with:
+          swift-version: "6.1"
+          skip-verify-signature: true
+
+      - name: Install SFCGAL build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            libcgal-dev \
+            libboost-serialization-dev \
+            libgmp-dev \
+            libmpfr-dev \
+            pkg-config
+
+      - name: Cache SFCGAL build
+        id: cache-sfcgal
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.SFCGAL_PREFIX }}
+          key: sfcgal-${{ env.SFCGAL_VERSION }}-ubuntu-${{ runner.arch }}
+
+      - name: Build SFCGAL from source
+        if: steps.cache-sfcgal.outputs.cache-hit != 'true'
+        run: |
+          curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz" | tar xz
+          cd SFCGAL-v${SFCGAL_VERSION}
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=${SFCGAL_PREFIX} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DSFCGAL_BUILD_TESTS=OFF \
+            -DSFCGAL_BUILD_EXAMPLES=OFF \
+            -DSFCGAL_BUILD_BENCH=OFF
+          cmake --build build --parallel $(nproc)
+          sudo cmake --install build
+
+      - name: Verify SFCGAL version
+        run: |
+          export PKG_CONFIG_PATH="${SFCGAL_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
+          INSTALLED=$(pkg-config --modversion sfcgal)
+          echo "Installed: $INSTALLED (required: $SFCGAL_VERSION)"
+          [ "$INSTALLED" = "$SFCGAL_VERSION" ] || {
+            echo "::error::SFCGAL version mismatch: expected $SFCGAL_VERSION, got $INSTALLED"
+            exit 1
+          }
+
+      - name: Build
+        run: |
+          export PKG_CONFIG_PATH="${SFCGAL_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
+          swift build
+
+      - name: Run tests
+        run: |
+          export PKG_CONFIG_PATH="${SFCGAL_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
+          export LD_LIBRARY_PATH="${SFCGAL_PREFIX}/lib:$LD_LIBRARY_PATH"
+          swift test
+
+  test-windows:
+    name: Swift on Windows
+    runs-on: windows-latest
+    env:
+      SFCGAL_PREFIX: C:/sfcgal
+      VCVARS: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat'
+    steps:
+      - uses: actions/checkout@v5
+
+      # swift-actions/setup-swift@v3 does not support Windows yet.
+      # compnerd/gha-setup-swift is maintained by Saleem Abdulrasool
+      # (Swift Core Team member and Windows release manager).
+      - uses: compnerd/gha-setup-swift@main
+        with:
+          swift-version: swift-6.1-release
+          swift-build: 6.1-RELEASE
+
+      - name: Swift version
+        shell: bash
+        run: swift --version
+
+      - name: Cache SFCGAL build
+        id: cache-sfcgal
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.SFCGAL_PREFIX }}
+          # Bump the suffix to invalidate whenever the build recipe changes
+          # (e.g. a new vcpkg baseline changes bundled DLL names).
+          key: sfcgal-${{ env.SFCGAL_VERSION }}-windows-${{ runner.arch }}-v3
+
+      - name: Build SFCGAL from source
+        if: steps.cache-sfcgal.outputs.cache-hit != 'true'
+        shell: cmd
+        run: |
+          curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v%SFCGAL_VERSION%/SFCGAL-v%SFCGAL_VERSION%.tar.gz" | tar xz
+          call "%VCVARS%"
+          cd SFCGAL-v%SFCGAL_VERSION%
+          cmake -B build -G Ninja ^
+            -DCMAKE_C_COMPILER=cl ^
+            -DCMAKE_CXX_COMPILER=cl ^
+            -DCMAKE_INSTALL_PREFIX=%SFCGAL_PREFIX% ^
+            -DCMAKE_BUILD_TYPE=Release ^
+            -DCMAKE_TOOLCHAIN_FILE=%VCPKG_INSTALLATION_ROOT%/scripts/buildsystems/vcpkg.cmake ^
+            -DSFCGAL_BUILD_TESTS=OFF ^
+            -DSFCGAL_BUILD_EXAMPLES=OFF ^
+            -DSFCGAL_BUILD_BENCH=OFF
+          cmake --build build --parallel
+          cmake --install build
+          :: SFCGAL uses vcpkg manifest mode (its own vcpkg.json pins Boost 1.86),
+          :: so its build creates a local vcpkg_installed tree that SFCGAL.dll
+          :: links against. Bundle those DLLs next to SFCGAL.dll so the loader
+          :: can resolve them from a single directory at runtime.
+          copy /Y build\vcpkg_installed\x64-windows\bin\*.dll %SFCGAL_PREFIX:/=\%\bin\
+
+      - name: Verify SFCGAL version
+        shell: bash
+        run: |
+          HEADER="${SFCGAL_PREFIX}/include/SFCGAL/version.h"
+          INSTALLED=$(sed -n 's/.*#define SFCGAL_VERSION "\([^"]*\)".*/\1/p' "$HEADER")
+          echo "Installed: $INSTALLED (required: $SFCGAL_VERSION)"
+          [ "$INSTALLED" = "$SFCGAL_VERSION" ] || {
+            echo "::error::SFCGAL version mismatch: expected $SFCGAL_VERSION, got $INSTALLED"
+            exit 1
+          }
+
+      - name: Build
+        shell: cmd
+        run: |
+          :: Bypass pkg-config on Windows — SPM's built-in parser can't handle
+          :: the empty prefix= that SFCGAL's CMake generates in sfcgal.pc.
+          :: Pass paths through MSVC-native LIB/INCLUDE env vars (populated by
+          :: vcvars64 with MSVC CRT paths, then prepended with SFCGAL's dirs).
+          :: The modulemap's link "SFCGAL" handles the actual link.
+          call "%VCVARS%"
+          set "LIB=%SFCGAL_PREFIX:/=\%\lib;%LIB%"
+          set "INCLUDE=%SFCGAL_PREFIX:/=\%\include;%INCLUDE%"
+          swift build -Xcc -I%SFCGAL_PREFIX%/include
+
+      - name: Run tests
+        shell: cmd
+        run: |
+          :: Add SFCGAL bin to PATH so the test binary can load SFCGAL.dll
+          :: and its bundled dependencies (boost, mpfr, gmp) at runtime.
+          call "%VCVARS%"
+          set "PATH=%SFCGAL_PREFIX:/=\%\bin;%PATH%"
+          set "LIB=%SFCGAL_PREFIX:/=\%\lib;%LIB%"
+          set "INCLUDE=%SFCGAL_PREFIX:/=\%\include;%INCLUDE%"
+          swift test -Xcc -I%SFCGAL_PREFIX%/include
