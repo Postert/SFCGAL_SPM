@@ -68,6 +68,6 @@ let package = Package(
         ),
 
         // ── Tests ──
-        .testTarget(name: "SwiftSFCGALTests", dependencies: ["SwiftSFCGAL"]),
+        .testTarget(name: "SwiftSFCGALTests", dependencies: ["SwiftSFCGAL", "CSFCGAL_Shim"]),
     ]
 )
