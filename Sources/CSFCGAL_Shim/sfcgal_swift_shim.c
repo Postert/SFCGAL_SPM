@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdlib.h>
 
 // _Thread_local is C11. MSVC uses __declspec(thread) in C mode.
 #ifdef _MSC_VER
@@ -73,6 +74,10 @@ void sfcgal_swift_clear_errors(void) {
 
 int sfcgal_swift_has_error(void) {
     return sfcgal_error_flag;
+}
+
+void sfcgal_swift_free_buffer(void *ptr) {
+    free(ptr);
 }
 
 void sfcgal_swift_inject_warning_for_testing(const char *message) {

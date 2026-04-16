@@ -33,6 +33,12 @@ void sfcgal_swift_clear_errors(void);
 /// 0 otherwise.
 int sfcgal_swift_has_error(void);
 
+/// Free a buffer that was allocated by SFCGAL (e.g. the WKT string returned by
+/// sfcgal_geometry_as_text, or the type string from sfcgal_geometry_type).
+/// Using this instead of calling free() directly keeps Swift files free of
+/// platform-specific libc imports (Darwin / Glibc / WinSDK).
+void sfcgal_swift_free_buffer(void *ptr);
+
 /// Injects a warning message into the thread-local warning buffer.
 /// Only intended for unit testing the warning capture path — do not call in
 /// production code.

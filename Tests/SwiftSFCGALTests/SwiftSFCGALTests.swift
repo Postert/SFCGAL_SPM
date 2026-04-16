@@ -115,7 +115,76 @@ import CSFCGAL_Shim
     #expect(sfcgalLastWarning() == "concurrent warning")
 }
 
-// 9. Batch tesselation — verify a valid polygon tesselates successfully.
+// ── Geometry class tests ──────────────────────────────────────────────────────
+
+// 9. Parse a point from WKT and check its type
+@Test func testGeometryPointFromWKT() throws {
+    initializeSFCGAL()
+    let geom = try Geometry(wkt: "POINT(1.0 2.0 3.0)")
+    #expect(geom.geometryType == "Point")
+    #expect(geom.geometryTypeID == 1 as UInt32)   // SFCGAL_TYPE_POINT = 1
+    #expect(geom.isValid)
+}
+
+// 10. Invalid WKT must throw SFCGALError.operationFailed, not crash
+@Test func testGeometryInvalidWKTThrows() {
+    initializeSFCGAL()
+    #expect(throws: SFCGALError.self) {
+        _ = try Geometry(wkt: "NOT_A_GEOMETRY")
+    }
+}
+
+// 11. WKT round-trip — parse then serialise
+@Test func testGeometryWKTRoundtrip() throws {
+    initializeSFCGAL()
+    let geom = try Geometry(wkt: "POLYGON((0 0,1 0,1 1,0 1,0 0))")
+    let output = geom.asWKT()
+    #expect(output.contains("POLYGON"))
+    #expect(!output.isEmpty)
+}
+
+// 12. asWKT with decimal precision
+@Test func testGeometryAsWKTDecimals() throws {
+    initializeSFCGAL()
+    let geom = try Geometry(wkt: "POINT(1.123456789 2.987654321)")
+    let wkt2 = geom.asWKT(decimals: 2)
+    #expect(wkt2.contains("POINT"))
+    // Rounded to 2 decimals — full precision string should be longer
+    #expect(wkt2.count < geom.asWKT().count)
+}
+
+// 13. clone() produces an independent copy
+@Test func testGeometryClone() throws {
+    initializeSFCGAL()
+    let original = try Geometry(wkt: "POINT(1 2 3)")
+    let copy = try original.clone()
+    // Independent objects with the same WKT
+    #expect(original.asWKT() == copy.asWKT())
+    // Different Swift objects (different handles)
+    #expect(original !== copy)
+}
+
+// 14. Polygon validity
+@Test func testGeometryValidPolygon() throws {
+    initializeSFCGAL()
+    let valid = try Geometry(wkt: "POLYGON((0 0,1 0,1 1,0 1,0 0))")
+    #expect(valid.isValid)
+}
+
+// 15. ownsHandle: false — borrowed geometry is not freed in deinit
+//     (Tests that creating a non-owning wrapper on a live pointer doesn't crash.)
+@Test func testGeometryBorrowedHandle() throws {
+    initializeSFCGAL()
+    let owner = try Geometry(wkt: "POINT(0 0)")
+    // Create a non-owning alias — simulates how child geometries of collections
+    // will be exposed without transferring ownership.
+    let borrowed = Geometry(handle: owner.handle, ownsHandle: false)
+    #expect(borrowed.geometryType == "Point")
+    // borrowed goes out of scope here without calling sfcgal_geometry_delete —
+    // owner still holds the valid pointer and frees it in its own deinit.
+}
+
+// 16. Batch tesselation — verify a valid polygon tesselates successfully.
 //
 // Swift type mappings for sfcgal_geometry_t (typedef void):
 //   sfcgal_geometry_t*          → UnsafeMutableRawPointer
