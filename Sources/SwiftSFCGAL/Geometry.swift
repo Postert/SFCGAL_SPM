@@ -81,7 +81,7 @@ public class Geometry {
     /// Useful for `switch` dispatch in code that receives a `Geometry` and needs
     /// to downcast to a concrete subclass. The raw values match the
     /// `SFCGAL_TYPE_*` constants in `sfcgal_c.h`.
-    public var geometryTypeID: Int32 {
+    public var geometryTypeID: UInt32 {
         sfcgal_geometry_type_id(handle).rawValue
     }
 

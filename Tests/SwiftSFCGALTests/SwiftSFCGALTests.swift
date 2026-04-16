@@ -122,7 +122,7 @@ import CSFCGAL_Shim
     initializeSFCGAL()
     let geom = try Geometry(wkt: "POINT(1.0 2.0 3.0)")
     #expect(geom.geometryType == "Point")
-    #expect(geom.geometryTypeID == 1)   // SFCGAL_TYPE_POINT = 1
+    #expect(geom.geometryTypeID == 1 as UInt32)   // SFCGAL_TYPE_POINT = 1
     #expect(geom.isValid)
 }
 
