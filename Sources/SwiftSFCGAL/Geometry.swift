@@ -82,7 +82,10 @@ public class Geometry {
     /// to downcast to a concrete subclass. The raw values match the
     /// `SFCGAL_TYPE_*` constants in `sfcgal_c.h`.
     public var geometryTypeID: UInt32 {
-        sfcgal_geometry_type_id(handle).rawValue
+        // rawValue is Int32 on Windows, UInt32 on Linux/macOS.
+        // numericCast handles both: it is generic over BinaryInteger pairs
+        // and traps on negative values (which SFCGAL type IDs never are).
+        numericCast(sfcgal_geometry_type_id(handle).rawValue)
     }
 
     // MARK: - Validity
