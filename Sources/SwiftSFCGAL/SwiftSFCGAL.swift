@@ -40,9 +40,21 @@ public func initializeSFCGAL() {
 // ── Error type ────────────────────────────────────────────────────────────────
 
 /// An error reported by the SFCGAL library.
-public struct SFCGALError: Error, CustomStringConvertible {
-    public let message: String
-    public var description: String { "SFCGALError: \(message)" }
+public enum SFCGALError: Error, CustomStringConvertible {
+    /// WKT / EWKT input could not be parsed.
+    case parseError(String)
+    /// A geometry operation (tesselation, Boolean op, etc.) failed.
+    case operationFailed(String)
+    /// A geometry that was expected to be valid is not.
+    case invalidGeometry(String)
+
+    public var description: String {
+        switch self {
+        case .parseError(let msg):      return "SFCGAL parse error: \(msg)"
+        case .operationFailed(let msg): return "SFCGAL operation failed: \(msg)"
+        case .invalidGeometry(let msg): return "SFCGAL invalid geometry: \(msg)"
+        }
+    }
 }
 
 // ── Warning access ────────────────────────────────────────────────────────────
@@ -71,7 +83,7 @@ internal func sfcgalCall<T>(_ operation: () -> T) throws -> T {
     let result = operation()
     if sfcgal_swift_has_error() != 0,
        let ptr = sfcgal_swift_get_last_error() {
-        throw SFCGALError(message: String(cString: ptr))
+        throw SFCGALError.operationFailed(String(cString: ptr))
     }
     return result
 }
