@@ -1,11 +1,10 @@
+#if canImport(CSFCGAL_System)
+import CSFCGAL_System
+#elseif canImport(CSFCGAL_Binary)
+import CSFCGAL_Binary
+#endif
 import CSFCGAL_Shim
 import Foundation
-
-#if canImport(CSFCGAL_System)
-    import CSFCGAL_System
-#elseif canImport(CSFCGAL_Binary)
-    import CSFCGAL_Binary
-#endif
 
 // MARK: - WKB I/O
 
@@ -27,8 +26,7 @@ extension Geometry {
         }
         // withUnsafeBytes gives UnsafeRawBufferPointer; cast baseAddress to
         // const char* as required by sfcgal_io_read_wkb.
-        let ptr = try data.withUnsafeBytes {
-            (raw: UnsafeRawBufferPointer) throws -> UnsafeMutableRawPointer? in
+        let ptr = try data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) throws -> UnsafeMutableRawPointer? in
             guard let base = raw.baseAddress else {
                 throw SFCGALError.parseError("Invalid WKB buffer")
             }
@@ -65,7 +63,7 @@ extension Geometry {
         var index = hex.startIndex
         while index < hex.endIndex {
             let nextIndex = hex.index(index, offsetBy: 2)
-            guard let byte = UInt8(hex[index..<nextIndex], radix: 16) else {
+            guard let byte = UInt8(hex[index ..< nextIndex], radix: 16) else {
                 throw SFCGALError.parseError("Invalid hex characters in WKB string")
             }
             bytes.append(byte)
@@ -150,8 +148,7 @@ extension Geometry {
         // sfcgal_prepared_geometry_geometry returns `const sfcgal_geometry_t*`,
         // which Swift imports as UnsafeRawPointer? — the prepared geometry owns it.
         guard let constPtr = sfcgal_prepared_geometry_geometry(prepared) else {
-            throw SFCGALError.operationFailed(
-                "Failed to extract geometry from EWKT prepared geometry")
+            throw SFCGALError.operationFailed("Failed to extract geometry from EWKT prepared geometry")
         }
         // Clone so the returned geometry has independent ownership, safe after
         // the prepared geometry is freed by the defer above.
@@ -181,8 +178,7 @@ extension Geometry {
         // sfcgal_prepared_geometry_create_from_geometry takes ownership of the
         // geometry pointer — we must clone so our own handle stays valid.
         guard let cloned = sfcgal_geometry_clone(handle) else { return "" }
-        guard let prepared = sfcgal_prepared_geometry_create_from_geometry(cloned, srid_t(srid))
-        else {
+        guard let prepared = sfcgal_prepared_geometry_create_from_geometry(cloned, srid_t(srid)) else {
             // sfcgal_prepared_geometry_create_from_geometry failed; cloned is
             // still our responsibility, so free it before returning.
             sfcgal_geometry_delete(cloned)
