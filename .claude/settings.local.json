@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(dir \"C:\\\\Users\\\\mafia\\\\Desktop\\\\HCU\\\\Work\\\\Swift_Apps\\\\SFCGAL_SPM\\\\Sources\\\\SwiftSFCGAL\")",
-      "Bash(dir \"C:\\\\Users\\\\mafia\\\\Desktop\\\\HCU\\\\Work\\\\Swift_Apps\\\\SFCGAL_SPM\\\\Tests\\\\SwiftSFCGALTests\")",
-      "Bash(findstr /n \"sfcgal_point\\\\|sfcgal_linestring\\\\|sfcgal_polygon\\\\|sfcgal_triangle\\\\|sfcgal_geometry_collection\\\\|sfcgal_polyhedral\\\\|sfcgal_triangulated\\\\|sfcgal_solid\" \"C:\\\\sfcgal\\\\include\\\\SFCGAL\\\\capi\\\\sfcgal_c.h\")"
-    ]
-  }
-}
