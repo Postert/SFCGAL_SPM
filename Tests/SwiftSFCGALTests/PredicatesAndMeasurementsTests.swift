@@ -146,6 +146,33 @@ private func innerSquare() throws -> Geometry {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// MARK: - covers3D
+// ══════════════════════════════════════════════════════════════════════════════
+
+@Test func testCovers3DPointOnSurface() throws {
+    initializeSFCGAL()
+    // A flat unit square at z=0 — a point exactly on it must be covered in 3D.
+    let surface   = try Geometry.fromWKT("POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))")
+    let onSurface = try Point(x: 0.5, y: 0.5, z: 0.0)
+    #expect(try surface.covers3D(onSurface))
+}
+
+@Test func testCovers3DPointAboveSurfaceIsNotCovered() throws {
+    initializeSFCGAL()
+    // Same surface — a point lifted to z=1 must NOT be covered in 3D.
+    let surface = try Geometry.fromWKT("POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))")
+    let above   = try Point(x: 0.5, y: 0.5, z: 1.0)
+    #expect(try !surface.covers3D(above))
+}
+
+@Test func testCovers3DReflexive() throws {
+    initializeSFCGAL()
+    // Every geometry covers itself in 3D.
+    let surface = try Geometry.fromWKT("POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))")
+    #expect(try surface.covers3D(surface))
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // MARK: - isPlanar
 // ══════════════════════════════════════════════════════════════════════════════
 
