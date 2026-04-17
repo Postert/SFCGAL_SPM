@@ -404,3 +404,50 @@ private func innerSquare() throws -> Geometry {
     let b = try shiftedSquare()
     _ = try a.distance(to: b)
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MARK: - validationResult (sfcgal_geometry_is_valid_detail)
+// ══════════════════════════════════════════════════════════════════════════════
+
+@Test func testValidationResultValidGeometry() throws {
+    initializeSFCGAL()
+    let p = try unitSquare()
+    let result = p.validationResult()
+    #expect(result.isValid)
+    #expect(result.reason == nil)
+    // Valid geometry — no location needed
+    #expect(result.location == nil)
+}
+
+@Test func testValidationResultInvalidGeometry() throws {
+    initializeSFCGAL()
+    // Self-intersecting polygon (bowtie) — definitively invalid.
+    // The two triangles share only the centre point, making the ring self-intersect.
+    let bowtie = try Geometry.fromWKT("POLYGON((0 0,1 1,1 0,0 1,0 0))")
+    let result = bowtie.validationResult()
+    #expect(!result.isValid)
+    // SFCGAL must provide a reason string for an invalid geometry
+    #expect(result.reason != nil)
+    #expect(!(result.reason?.isEmpty ?? true))
+}
+
+@Test func testValidationResultValidPolygonWithHole() throws {
+    initializeSFCGAL()
+    // Valid polygon with correctly-wound hole — must pass validation
+    let p = try Geometry.fromWKT(
+        "POLYGON((0 0,4 0,4 4,0 4,0 0),(1 1,1 3,3 3,3 1,1 1))"
+    )
+    let result = p.validationResult()
+    #expect(result.isValid)
+    #expect(result.reason == nil)
+}
+
+@Test func testValidationResultAgreesWithIsValid() throws {
+    initializeSFCGAL()
+    // validationResult().isValid must agree with the base isValid property
+    // for both valid and invalid geometries.
+    let valid   = try unitSquare()
+    let invalid = try Geometry.fromWKT("POLYGON((0 0,1 1,1 0,0 1,0 0))")
+    #expect(valid.validationResult().isValid   == valid.isValid)
+    #expect(invalid.validationResult().isValid == invalid.isValid)
+}
