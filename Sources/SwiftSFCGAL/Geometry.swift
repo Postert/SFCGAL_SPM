@@ -46,7 +46,27 @@ public class Geometry {
 
     // MARK: - Factory
 
+    /// Parse a WKT (Well-Known Text) string and return the most-specific geometry subclass.
+    ///
+    /// The returned object is typed: parsing `"POINT(1 2 3)"` returns a `Point`,
+    /// `"POLYGON((...))"` returns a `Polygon`, etc.  Use `as?` to downcast when
+    /// you know the expected type, or work with the base `Geometry` API when not.
+    ///
+    /// - Parameter wkt: A valid WKT string, e.g. `"POINT(1 2 3)"`.
+    /// - Throws: `SFCGALError.parseError` if the string cannot be parsed.
+    /// - Returns: A `Geometry` subclass matched to the WKT type.
+    public static func fromWKT(_ wkt: String) throws -> Geometry {
+        guard let ptr = try sfcgalCall({ sfcgal_io_read_wkt(wkt, wkt.utf8.count) }) else {
+            throw SFCGALError.parseError("Failed to parse WKT: \(wkt)")
+        }
+        return makeGeometry(handle: ptr, ownsHandle: true)
+    }
+
     /// Parse a WKT (Well-Known Text) string and return the corresponding geometry.
+    ///
+    /// Unlike `fromWKT(_:)`, this initialiser always returns a base `Geometry`
+    /// regardless of the actual geometry type. Use `fromWKT(_:)` when you need
+    /// the concrete subclass (e.g. to read point coordinates).
     ///
     /// - Parameter wkt: A valid WKT string, e.g. `"POINT(1 2 3)"`.
     /// - Throws: `SFCGALError.parseError` if the string cannot be parsed.
@@ -130,16 +150,17 @@ public class Geometry {
 
     // MARK: - Clone
 
-    /// Returns a deep copy of this geometry.
+    /// Returns a deep copy of this geometry as the most-specific subclass.
     ///
     /// The clone is fully independent — modifying or releasing the original has
-    /// no effect on the clone.
+    /// no effect on the clone. Cloning a `Point` returns a `Point`, cloning a
+    /// `Polygon` returns a `Polygon`, and so on.
     ///
     /// - Throws: `SFCGALError.operationFailed` if cloning fails.
     public func clone() throws -> Geometry {
         guard let ptr = try sfcgalCall({ sfcgal_geometry_clone(handle) }) else {
             throw SFCGALError.operationFailed("Failed to clone geometry")
         }
-        return Geometry(handle: ptr)
+        return makeGeometry(handle: ptr, ownsHandle: true)
     }
 }
