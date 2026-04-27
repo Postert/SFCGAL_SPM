@@ -95,7 +95,7 @@ jobs:
       - name: Verify XCFrameworks
         run: |
           echo "=== Checking XCFramework contents ==="
-          for fw in GMP MPFR SFCGAL; do
+          for fw in GMP MPFR SFCGAL BoostSerialization; do
             fw_path="xcframeworks/${fw}.xcframework"
             if [ ! -d "$fw_path" ]; then
               echo "ERROR: ${fw}.xcframework not found!"
@@ -112,7 +112,7 @@ jobs:
               echo "  $(basename "$lib"): $(lipo -info "$lib" 2>&1)"
             done
 
-            # Only SFCGAL should have module maps (GMP/MPFR are link-only)
+            # Only SFCGAL should have module maps (GMP/MPFR/BoostSerialization are link-only)
             modulemap_count=$(find "$fw_path" -name "module.modulemap" | wc -l | tr -d ' ')
             if [ "$fw" = "SFCGAL" ] && [ "$modulemap_count" -lt 2 ]; then
               echo "ERROR: Expected at least 2 module maps in ${fw}.xcframework, found $modulemap_count"
@@ -126,7 +126,7 @@ jobs:
       - name: Package XCFrameworks
         run: |
           cd xcframeworks
-          for fw in GMP MPFR SFCGAL; do
+          for fw in GMP MPFR SFCGAL BoostSerialization; do
             zip -r -y "${fw}.xcframework.zip" "${fw}.xcframework"
             echo "${fw}.xcframework.zip: $(du -h "${fw}.xcframework.zip" | cut -f1)"
           done
@@ -136,9 +136,13 @@ jobs:
         id: checksums
         run: |
           cd xcframeworks
-          for fw in GMP MPFR SFCGAL; do
+          for fw in GMP MPFR SFCGAL BoostSerialization; do
             checksum=$(swift package compute-checksum "${fw}.xcframework.zip")
-            echo "${fw}_CHECKSUM=${checksum}" >> "$GITHUB_OUTPUT"
+            # Uppercase the output key (e.g. BoostSerialization →
+            # BOOSTSERIALIZATION_CHECKSUM) so it matches the existing
+            # GMP/MPFR/SFCGAL convention.
+            key="$(echo "$fw" | tr '[:lower:]' '[:upper:]')_CHECKSUM"
+            echo "${key}=${checksum}" >> "$GITHUB_OUTPUT"
             echo "${fw}: ${checksum}"
           done
 
@@ -165,6 +169,7 @@ jobs:
             xcframeworks/GMP.xcframework.zip
             xcframeworks/MPFR.xcframework.zip
             xcframeworks/SFCGAL.xcframework.zip
+            xcframeworks/BoostSerialization.xcframework.zip
           retention-days: 30
 
       # ── Create GitHub Release ──────────────────────────────────────────
@@ -180,6 +185,7 @@ jobs:
           GMP_CHECKSUM: ${{ steps.checksums.outputs.GMP_CHECKSUM }}
           MPFR_CHECKSUM: ${{ steps.checksums.outputs.MPFR_CHECKSUM }}
           SFCGAL_CHECKSUM: ${{ steps.checksums.outputs.SFCGAL_CHECKSUM }}
+          BOOSTSERIALIZATION_CHECKSUM: ${{ steps.checksums.outputs.BOOSTSERIALIZATION_CHECKSUM }}
           RELEASE_TYPE: ${{ inputs.release_type }}
         run: |
           RELEASE_LABEL="SFCGAL ${SFCGAL_VERSION} XCFrameworks"
@@ -205,24 +211,27 @@ jobs:
           BODY="${BODY}
 
           ### Library Versions
-          | Library | Version |
-          |---------|---------|
-          | SFCGAL  | ${SFCGAL_VERSION} |
-          | GMP     | ${GMP_VERSION} |
-          | MPFR    | ${MPFR_VERSION} |
+          | Library              | Version |
+          |----------------------|---------|
+          | SFCGAL               | ${SFCGAL_VERSION} |
+          | GMP                  | ${GMP_VERSION} |
+          | MPFR                 | ${MPFR_VERSION} |
+          | Boost.Serialization  | (Boost version pinned in scripts/build-sfcgal-ios.sh) |
 
           ### Swift Package Manager Checksums
           \`\`\`
-          GMP:    ${GMP_CHECKSUM}
-          MPFR:   ${MPFR_CHECKSUM}
-          SFCGAL: ${SFCGAL_CHECKSUM}
+          GMP:                ${GMP_CHECKSUM}
+          MPFR:               ${MPFR_CHECKSUM}
+          SFCGAL:             ${SFCGAL_CHECKSUM}
+          BoostSerialization: ${BOOSTSERIALIZATION_CHECKSUM}
           \`\`\`
 
           ### Package.swift binaryTarget URLs
           \`\`\`
-          GMP:    https://github.com/${{ github.repository }}/releases/download/${TAG}/GMP.xcframework.zip
-          MPFR:   https://github.com/${{ github.repository }}/releases/download/${TAG}/MPFR.xcframework.zip
-          SFCGAL: https://github.com/${{ github.repository }}/releases/download/${TAG}/SFCGAL.xcframework.zip
+          GMP:                https://github.com/${{ github.repository }}/releases/download/${TAG}/GMP.xcframework.zip
+          MPFR:               https://github.com/${{ github.repository }}/releases/download/${TAG}/MPFR.xcframework.zip
+          SFCGAL:             https://github.com/${{ github.repository }}/releases/download/${TAG}/SFCGAL.xcframework.zip
+          BoostSerialization: https://github.com/${{ github.repository }}/releases/download/${TAG}/BoostSerialization.xcframework.zip
           \`\`\`"
 
           PRERELEASE_FLAG=""
@@ -236,7 +245,8 @@ jobs:
             $PRERELEASE_FLAG \
             xcframeworks/GMP.xcframework.zip \
             xcframeworks/MPFR.xcframework.zip \
-            xcframeworks/SFCGAL.xcframework.zip
+            xcframeworks/SFCGAL.xcframework.zip \
+            xcframeworks/BoostSerialization.xcframework.zip
 
           echo "Release created: $TAG (prerelease=$PRERELEASE)"
 
@@ -247,6 +257,7 @@ jobs:
           GMP_CHECKSUM: ${{ steps.checksums.outputs.GMP_CHECKSUM }}
           MPFR_CHECKSUM: ${{ steps.checksums.outputs.MPFR_CHECKSUM }}
           SFCGAL_CHECKSUM: ${{ steps.checksums.outputs.SFCGAL_CHECKSUM }}
+          BOOSTSERIALIZATION_CHECKSUM: ${{ steps.checksums.outputs.BOOSTSERIALIZATION_CHECKSUM }}
         run: |
           REPO_URL="https://github.com/${{ github.repository }}"
 
@@ -258,19 +269,24 @@ jobs:
           ════════════════════════════════════════════════════════════════════
 
           .binaryTarget(
-              name: "CGMP",
+              name: "CSFCGAL_Binary",
+              url: "${REPO_URL}/releases/download/${TAG}/SFCGAL.xcframework.zip",
+              checksum: "${SFCGAL_CHECKSUM}"
+          ),
+          .binaryTarget(
+              name: "CGMP_Binary",
               url: "${REPO_URL}/releases/download/${TAG}/GMP.xcframework.zip",
               checksum: "${GMP_CHECKSUM}"
           ),
           .binaryTarget(
-              name: "CMPFR",
+              name: "CMPFR_Binary",
               url: "${REPO_URL}/releases/download/${TAG}/MPFR.xcframework.zip",
               checksum: "${MPFR_CHECKSUM}"
           ),
           .binaryTarget(
-              name: "CSFCGAL",
-              url: "${REPO_URL}/releases/download/${TAG}/SFCGAL.xcframework.zip",
-              checksum: "${SFCGAL_CHECKSUM}"
+              name: "CBoostSerialization_Binary",
+              url: "${REPO_URL}/releases/download/${TAG}/BoostSerialization.xcframework.zip",
+              checksum: "${BOOSTSERIALIZATION_CHECKSUM}"
           ),
 
           EOF

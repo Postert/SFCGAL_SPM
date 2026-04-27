@@ -332,6 +332,18 @@ build_sfcgal \
     "$BOOST_SIM_X86"
 
 # =============================================================================
+# Persist Boost.Serialization archives outside WORK_DIR
+# =============================================================================
+# WORK_DIR is removed by the EXIT trap. The Boost archives must survive into
+# the next build stage (create-xcframeworks.sh) so they can be packaged into
+# BoostSerialization.xcframework. Copy them next to libSFCGAL.a in each slice.
+
+echo "=== Staging libboost_serialization.a per slice ==="
+cp "$BOOST_IOS_ARM64/lib/libboost_serialization.a" "$OUTPUT_DIR/ios-arm64/lib/"
+cp "$BOOST_SIM_ARM64/lib/libboost_serialization.a" "$OUTPUT_DIR/simulator-arm64/lib/"
+cp "$BOOST_SIM_X86/lib/libboost_serialization.a"   "$OUTPUT_DIR/simulator-x86_64/lib/"
+
+# =============================================================================
 # Create fat simulator library
 # =============================================================================
 
@@ -342,6 +354,10 @@ lipo -create \
     "$OUTPUT_DIR/simulator-arm64/lib/libSFCGAL.a" \
     "$OUTPUT_DIR/simulator-x86_64/lib/libSFCGAL.a" \
     -output "$OUTPUT_DIR/simulator-fat/lib/libSFCGAL.a"
+lipo -create \
+    "$OUTPUT_DIR/simulator-arm64/lib/libboost_serialization.a" \
+    "$OUTPUT_DIR/simulator-x86_64/lib/libboost_serialization.a" \
+    -output "$OUTPUT_DIR/simulator-fat/lib/libboost_serialization.a"
 
 # =============================================================================
 # Verify all outputs
@@ -373,6 +389,13 @@ verify_lib "$OUTPUT_DIR/simulator-arm64/lib/libSFCGAL.a" "7" "Simulator arm64"
 verify_lib "$OUTPUT_DIR/simulator-x86_64/lib/libSFCGAL.a" "7" "Simulator x86_64"
 
 echo "  Simulator fat: $(lipo -info "$OUTPUT_DIR/simulator-fat/lib/libSFCGAL.a")"
+
+# Verify Boost.Serialization archives are staged next to SFCGAL
+verify_lib "$OUTPUT_DIR/ios-arm64/lib/libboost_serialization.a" "2" "Boost.Serialization iOS device arm64"
+verify_lib "$OUTPUT_DIR/simulator-arm64/lib/libboost_serialization.a" "7" "Boost.Serialization Simulator arm64"
+verify_lib "$OUTPUT_DIR/simulator-x86_64/lib/libboost_serialization.a" "7" "Boost.Serialization Simulator x86_64"
+
+echo "  Boost.Serialization Simulator fat: $(lipo -info "$OUTPUT_DIR/simulator-fat/lib/libboost_serialization.a")"
 
 # Verify C API header is present
 echo ""
