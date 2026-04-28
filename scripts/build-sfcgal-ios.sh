@@ -166,7 +166,22 @@ build_boost() {
     local cxx
     cxx=$(xcrun --sdk "$sdk_name" --find clang++)
 
+    # Map our arch to b2's architecture taxonomy. b2 also wants
+    # address-model=64 so it doesn't infer 32-bit from architecture=x86.
+    local b2_arch
+    case "$arch" in
+        arm64)  b2_arch=arm ;;
+        x86_64) b2_arch=x86 ;;
+        *) echo "ERROR: unsupported arch: $arch" >&2; exit 1 ;;
+    esac
+
     local boost_install="$WORK_DIR/boost-${variant_name}"
+    # Per-variant build directory. Without this, b2's bin.v2/ cache lives
+    # under $BOOST_ROOT and is keyed by toolset name (clang-ios) — so a
+    # later variant silently reuses object files from the first arm64
+    # variant, producing a "simulator-x86_64" install that is actually
+    # arm64. Isolating the build directory per variant fixes that.
+    local boost_build="$WORK_DIR/boost-build-${variant_name}"
 
     echo "=== Building Boost for ${sdk_name} ${arch} ===" >&2
 
@@ -183,6 +198,7 @@ JAMEOF
         cd "$BOOST_ROOT"
         ./b2 \
             --user-config="$jam_file" \
+            --build-dir="$boost_build" \
             --prefix="$boost_install" \
             --with-thread \
             --with-system \
@@ -192,11 +208,21 @@ JAMEOF
             threading=multi \
             variant=release \
             target-os=iphone \
-            architecture=arm \
+            architecture="$b2_arch" \
+            address-model=64 \
             -j"$NCPU" \
             install \
             > /dev/null 2>&1
     )
+
+    # Verify the produced archive is actually the requested architecture.
+    # Catches any future regression of the "shared b2 cache" class of bug.
+    local actual_arch
+    actual_arch=$(lipo -archs "$boost_install/lib/libboost_serialization.a")
+    if [ "$actual_arch" != "$arch" ]; then
+        echo "ERROR: Boost ${variant_name} produced arch '${actual_arch}', expected '${arch}'" >&2
+        exit 1
+    fi
 
     echo "$boost_install"
 }
