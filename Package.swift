@@ -53,28 +53,25 @@ let package = Package(
         ),
 
         // ── iOS: prebuilt XCFrameworks (downloaded from GitHub releases) ──
-        // NOTE: All four checksums below must be replaced after running the
-        // build-xcframeworks workflow with dev_suffix=4. Until then, SPM will
-        // refuse to resolve the package.
         .binaryTarget(
             name: "CSFCGAL_Binary",
             url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.2.0-4/SFCGAL.xcframework.zip",
-            checksum: "0000000000000000000000000000000000000000000000000000000000000000"
+            checksum: "7f76e423bde3763926b794570bdcb0694a66c05833626fae5a10394989f9ad43"
         ),
         .binaryTarget(
             name: "CGMP_Binary",
             url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.2.0-4/GMP.xcframework.zip",
-            checksum: "0000000000000000000000000000000000000000000000000000000000000000"
+            checksum: "596bfe1c24e2adb1b5c3985c10e8adbe42ab1a20953ebee29a177f77ed705e88"
         ),
         .binaryTarget(
             name: "CMPFR_Binary",
             url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.2.0-4/MPFR.xcframework.zip",
-            checksum: "0000000000000000000000000000000000000000000000000000000000000000"
+            checksum: "0c18ad701fb95bae2488dbea744d81034242b1eaa61079b50bf142ff2317758b"
         ),
         .binaryTarget(
             name: "CBoostSerialization_Binary",
             url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.2.0-4/BoostSerialization.xcframework.zip",
-            checksum: "0000000000000000000000000000000000000000000000000000000000000000"
+            checksum: "31b794fdbca52c40601d11d166b2277b71cabde72684d7f6e1fdbe627f00db82"
         ),
 
         // ── Tests ──
