@@ -46,6 +46,13 @@ import Testing
                              equals: "POLYGON ((0.0 0.0,0.0 1.0,0.5 0.5,1.0 0.0,0.0 0.0))",
                              "AlphaShapesTest.cpp / testAlphaShapes2D_Triangle")
 
+    let polygon = try UpstreamParity.geometry("LINESTRING (0 0,1 0,1 1,0 1)")
+        .alphaShapes()
+    #expect(polygon.geometryTypeID == UpstreamParity.polygonTypeID)
+    UpstreamParity.expectWKT(polygon, decimals: 1,
+                             equals: "POLYGON ((0.0 0.0,0.0 1.0,1.0 1.0,1.0 0.0,0.0 0.0))",
+                             "AlphaShapesTest.cpp / testAlphaShapes2D_Polygon")
+
     let multiPoint = try UpstreamParity.geometry("MULTIPOINT ((0 0),(1 0),(1 1),(0 1),(0.5 0.5))")
         .optimalAlphaShapes()
     #expect(multiPoint.geometryTypeID == UpstreamParity.polygonTypeID ||
