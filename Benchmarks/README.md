@@ -38,7 +38,7 @@ swift run -c release BatchOperationsBenchmark -- --max-surfaces 200
 The benchmark compares:
 
 - Swift loop: `geometries.map { try $0.tesselate() }`
-- C batch: `batchTesselate(geometries)`
+- C batch: `batchTesselate(geometries)` (deprecated; benchmarked to validate the decision)
 - Swift pipeline: WKT parse -> tesselate -> vertex extraction in Swift
 - C pipeline: `batchWKTToVertices(_:vertexCapacity:)`
 

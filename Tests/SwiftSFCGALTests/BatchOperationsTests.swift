@@ -52,7 +52,7 @@ import CSFCGAL_Shim
     let square = try TestGeometry.fromWKT(GeometryFixtures.Polygons2D.unitSquare)
     let wall = try TestGeometry.fromWKT(GeometryFixtures.Polygons3D.verticalWall)
 
-    let results = try batchTesselate([square, wall])
+    let results = try batchTesselateForTesting([square, wall])
 
     #expect(results.count == 2)
     #expect(results[0] is TriangulatedSurface)
@@ -64,9 +64,31 @@ import CSFCGAL_Shim
 @Test func testBatchTesselateSwiftAPIEmptyInput() throws {
     TestSupport.initializeSFCGALOnce()
 
-    let results = try batchTesselate([])
+    let results = try batchTesselateForTesting([])
 
     #expect(results.isEmpty)
+}
+
+@Test func testBatchTesselateMatchesSwiftLoop() throws {
+    TestSupport.initializeSFCGALOnce()
+
+    let geometries = try [
+        GeometryFixtures.Polygons2D.unitSquare,
+        GeometryFixtures.Polygons2D.unitTriangle,
+        GeometryFixtures.PolygonsWithHoles.squareWithCenteredHole,
+        GeometryFixtures.Polygons3D.verticalWall,
+        GeometryFixtures.CityGML.wallSurface,
+        GeometryFixtures.CityGML.slopedRoofSurface,
+    ].map(TestGeometry.fromWKT)
+
+    let swiftResults = try geometries.map { try $0.tesselate() }
+    let batchResults = try batchTesselateForTesting(geometries)
+
+    #expect(batchResults.count == swiftResults.count)
+    for index in swiftResults.indices {
+        #expect(batchResults[index].geometryType == swiftResults[index].geometryType)
+        #expect(batchResults[index].asWKB() == swiftResults[index].asWKB())
+    }
 }
 
 @Test func testBatchWktToVertices() throws {
@@ -93,6 +115,27 @@ import CSFCGAL_Shim
         "1000,0,1000",
         "0,1000,2000",
     ]))
+}
+
+@Test func testBatchWktToVerticesMatchesSwiftPipeline() throws {
+    TestSupport.initializeSFCGALOnce()
+
+    let wkts = [
+        GeometryFixtures.Polygons2D.unitSquare,
+        GeometryFixtures.PolygonsWithHoles.squareWithCenteredHole,
+        GeometryFixtures.Polygons3D.verticalWall,
+        GeometryFixtures.CityGML.wallSurface,
+        GeometryFixtures.CityGML.slopedRoofSurface,
+    ]
+
+    let swiftVertices = try wkts.flatMap {
+        try TestGeometry.fromWKT($0).triangleVertices()
+    }
+    let result = try batchWKTToVertices(wkts, vertexCapacity: swiftVertices.count)
+
+    #expect(result.vertexCounts.reduce(0, +) * 3 == result.vertices.count)
+    #expect(result.vertices.count == swiftVertices.count)
+    #expect(result.vertices.elementsEqual(swiftVertices, by: { TestSupport.almostEqual($0, $1) }))
 }
 
 @Test func testBatchWktToVerticesInvalidWKTThrows() {

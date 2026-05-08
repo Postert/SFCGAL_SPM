@@ -39,11 +39,21 @@ public struct BatchVertexResult {
 
 /// Tesselates multiple geometries in one C-level call.
 ///
-/// This avoids repeated Swift->C calls when processing large geometry batches,
-/// such as many CityGML wall or roof surfaces. If any geometry fails, all
-/// successful intermediate C results are released and a `BatchGeometryError`
-/// reports the failed input indexes.
+/// Real Hamburg CityGML benchmarks did not show a stable speedup for plain
+/// batch tesselation. Prefer a normal Swift loop, or use
+/// `batchWKTToVertices(_:vertexCapacity:)` for full WKT-to-vertices pipelines.
+/// If any geometry fails, all successful intermediate C results are released
+/// and a `BatchGeometryError` reports the failed input indexes.
+@available(*, deprecated, message: "Real CityGML benchmarks did not show a stable speedup. Use geometries.map { try $0.tesselate() } or batchWKTToVertices(_:vertexCapacity:) for full WKT-to-vertices pipelines.")
 public func batchTesselate(_ geometries: [Geometry]) throws -> [Geometry] {
+    try batchTesselateCore(geometries)
+}
+
+internal func batchTesselateForTesting(_ geometries: [Geometry]) throws -> [Geometry] {
+    try batchTesselateCore(geometries)
+}
+
+private func batchTesselateCore(_ geometries: [Geometry]) throws -> [Geometry] {
     guard !geometries.isEmpty else { return [] }
 
     let inputs: [UnsafeRawPointer?] = geometries.map { UnsafeRawPointer($0.handle) }
