@@ -34,7 +34,7 @@ private func rectangle2x3() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testTranslate2DMovesPoint() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p = try Point(x: 1.0, y: 2.0)
     let moved = try p.translated(dx: 3.0, dy: 4.0)
     let result = try #require(moved as? Point)
@@ -43,7 +43,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testTranslate3DMovesPoint() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p = try Point(x: 1.0, y: 2.0, z: 3.0)
     let moved = try p.translated(dx: 10.0, dy: 20.0, dz: 30.0)
     let result = try #require(moved as? Point)
@@ -53,14 +53,14 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testTranslatePreservesArea() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try unitSquare2D()
     let moved    = try original.translated(dx: 100.0, dy: 200.0)
     #expect(almostEqual(try moved.area(), 1.0))
 }
 
 @Test func testTranslateIdentity() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Translating by zero must preserve area (and effectively be identity)
     let original = try unitSquare2D()
     let moved    = try original.translated(dx: 0.0, dy: 0.0, dz: 0.0)
@@ -68,7 +68,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testTranslateResultIsOwned() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let result: Geometry
     do {
         let p = try Point(x: 1.0, y: 2.0)
@@ -84,7 +84,7 @@ private func rectangle2x3() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testRotate2DBy90Degrees() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // (1, 0) rotated by π/2 around origin → (0, 1)
     let p = try Point(x: 1.0, y: 0.0)
     let rotated = try p.rotated(angle: .pi / 2)
@@ -94,7 +94,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testRotate2DFullTurnIsIdentity() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // (1, 0) rotated by 2π → back to (1, 0)
     let p = try Point(x: 1.0, y: 0.0)
     let rotated = try p.rotated(angle: 2.0 * .pi)
@@ -104,7 +104,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testRotatePreservesArea() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Rotation is rigid — areas are invariant
     let original = try unitSquare2D()
     let rotated  = try original.rotated(angle: .pi / 4)
@@ -112,7 +112,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testRotate2DAroundCenter() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // (2, 1) rotated by π around (1, 1) → (0, 1)
     let p = try Point(x: 2.0, y: 1.0)
     let rotated = try p.rotated2D(angle: .pi, cx: 1.0, cy: 1.0)
@@ -122,7 +122,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testRotate3DAroundZAxisMatches2D() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // 3D rotation around the Z-axis vector (0, 0, 1) of (1, 0, 5) by π/2
     // → (0, 1, 5)  (Z is preserved, XY rotates)
     let p = try Point(x: 1.0, y: 0.0, z: 5.0)
@@ -134,7 +134,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testRotate3DAroundCenter() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // (2, 0, 0) rotated by π around the X-axis through (1, 0, 0) → (2, 0, 0)
     // because the point lies on the rotation axis.
     let p = try Point(x: 2.0, y: 0.0, z: 0.0)
@@ -148,7 +148,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testRotateXAxis() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // (0, 1, 0) rotated by π/2 around X-axis → (0, 0, 1)
     let p = try Point(x: 0.0, y: 1.0, z: 0.0)
     let rotated = try p.rotatedX(angle: .pi / 2)
@@ -159,7 +159,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testRotateYAxis() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // (1, 0, 0) rotated by π/2 around Y-axis → (0, 0, -1)
     let p = try Point(x: 1.0, y: 0.0, z: 0.0)
     let rotated = try p.rotatedY(angle: .pi / 2)
@@ -170,7 +170,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testRotateZAxis() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // (1, 0, 5) rotated by π/2 around Z-axis → (0, 1, 5)
     let p = try Point(x: 1.0, y: 0.0, z: 5.0)
     let rotated = try p.rotatedZ(angle: .pi / 2)
@@ -181,7 +181,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testRotateZeroAngleIsIdentity() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try unitSquare2D()
     let rotated  = try original.rotated(angle: 0.0)
     #expect(almostEqual(try rotated.area(), 1.0))
@@ -192,7 +192,7 @@ private func rectangle2x3() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testUniformScaleArea() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Unit square scaled by 2 → area = 4 (factor²)
     let original = try unitSquare2D()
     let scaled   = try original.scaled(factor: 2.0)
@@ -200,7 +200,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testUniformScaleHalvesArea() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Unit square scaled by 0.5 → area = 0.25
     let original = try unitSquare2D()
     let scaled   = try original.scaled(factor: 0.5)
@@ -208,14 +208,14 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testUniformScaleByOneIsIdentity() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try unitSquare2D()
     let scaled   = try original.scaled(factor: 1.0)
     #expect(almostEqual(try scaled.area(), 1.0))
 }
 
 @Test func testNonUniformScale3D() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Unit square (area=1) scaled by (2,3,1) → area = 6 (sx*sy)
     let original = try unitSquare2D()
     let scaled   = try original.scaled(sx: 2.0, sy: 3.0, sz: 1.0)
@@ -223,7 +223,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testScaleAroundCenter() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Unit square centred at (0.5, 0.5) scaled by (2,2,1) around its centre
     // produces a 2×2 square — area = 4
     let original = try unitSquare2D()
@@ -233,7 +233,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testScalePoint() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // (3, 4) scaled by 2 → (6, 8)
     let p = try Point(x: 3.0, y: 4.0)
     let scaled = try p.scaled(factor: 2.0)
@@ -247,7 +247,7 @@ private func rectangle2x3() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testExtrudeUnitSquareToBox() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Unit square extruded by (0, 0, 5) → box with volume 1×1×5 = 5
     let footprint = try unitSquare2D()
     let solid     = try footprint.extrude(dx: 0.0, dy: 0.0, dz: 5.0)
@@ -255,7 +255,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testExtrudeRectangleVolume() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // 2×3 rectangle extruded by 10 m → volume = 60 m³ (the LOD1 building case)
     let footprint = try rectangle2x3()
     let building  = try footprint.extrude(dx: 0.0, dy: 0.0, dz: 10.0)
@@ -263,7 +263,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testExtrudeReturnsSolid() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // The extruded result must be a Solid — that's how volume() returns non-zero
     let footprint = try unitSquare2D()
     let solid     = try footprint.extrude(dx: 0.0, dy: 0.0, dz: 1.0)
@@ -271,14 +271,14 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testExtrudeResultIsValid() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let footprint = try unitSquare2D()
     let solid     = try footprint.extrude(dx: 0.0, dy: 0.0, dz: 1.0)
     #expect(solid.isValid)
 }
 
 @Test func testExtrudeResultIsOwned() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let result: Geometry
     do {
         let footprint = try unitSquare2D()
@@ -289,7 +289,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testExtrudeObliqueDirection() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Extruding straight up versus obliquely both produce the same volume:
     //   volume = base_area * |dz|  (the projected height)
     // For a 1×1 square extruded by (3, 4, 5) the volume is 1*5 = 5.
@@ -303,7 +303,7 @@ private func rectangle2x3() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testStraightSkeletonOnSquareIsValid() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let square   = try unitSquare2D()
     let skeleton = try square.straightSkeleton()
     // The skeleton of a square is a non-trivial multilinestring
@@ -313,7 +313,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testStraightSkeletonWithDistancesOnSquareIsValid() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let square   = try unitSquare2D()
     let skeleton = try square.straightSkeletonWithDistances()
     #expect(!skeleton.asWKT().isEmpty)
@@ -324,7 +324,7 @@ private func rectangle2x3() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testStraightSkeletonExtrudeReturnsSolidGeometry() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Hipped-roof extrusion on a unit square at height 1 → an open
     // PolyhedralSurface of 4 sloped roof triangles meeting at the apex.
     //
@@ -339,7 +339,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testStraightSkeletonExtrudeRectangle() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // 2×3 rectangle with ridge at height 2 → roof faces still cover more
     // 3D area than the 6.0 footprint (because every face is tilted).
     let rect = try rectangle2x3()
@@ -348,7 +348,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testExtrudePolygonStraightSkeletonProducesBuildingWithRoof() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // 2×3 footprint, 10 m walls, 4 m roof.
     // The result is a PolyhedralSurface (open shell of walls + roof faces).
     //
@@ -364,7 +364,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testExtrudePolygonStraightSkeletonResultIsValid() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let footprint = try unitSquare2D()
     let building  = try footprint.extrudePolygonStraightSkeleton(buildingHeight: 3.0,
                                                                  roofHeight: 1.0)
@@ -376,7 +376,7 @@ private func rectangle2x3() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testStraightSkeletonPartitionReturnsPolyhedralSurface() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // straight_skeleton_partition splits a polygon into faces along its
     // straight skeleton.  SFCGAL returns the result as a PolyhedralSurface
     // whose patches are the partition cells.
@@ -399,7 +399,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testStraightSkeletonPartitionUnitSquare() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Unit square partition — verified against the C API: returns a
     // PolyhedralSurface of 4 triangular cells meeting at the centre (0.5, 0.5).
     let square    = try unitSquare2D()
@@ -413,7 +413,7 @@ private func rectangle2x3() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testTranslateThenInverseTranslateIsIdentity() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p     = try Point(x: 7.0, y: 11.0)
     let there = try p.translated(dx: 3.0, dy: -4.0)
     let back  = try there.translated(dx: -3.0, dy: 4.0)
@@ -423,7 +423,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testRotateThenInverseRotateIsIdentity() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p     = try Point(x: 3.0, y: 4.0)
     let there = try p.rotated(angle: .pi / 3)
     let back  = try there.rotated(angle: -.pi / 3)
@@ -433,7 +433,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testScaleThenInverseScaleIsIdentity() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p     = try Point(x: 5.0, y: 7.0)
     let big   = try p.scaled(factor: 4.0)
     let back  = try big.scaled(factor: 0.25)
@@ -443,7 +443,7 @@ private func rectangle2x3() throws -> Geometry {
 }
 
 @Test func testTransformThenWKTRoundtrip() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Transform results round-trip cleanly through WKT
     let original = try unitSquare2D()
     let moved    = try original.translated(dx: 100.0, dy: 200.0)

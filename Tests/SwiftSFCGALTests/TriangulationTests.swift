@@ -57,7 +57,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testTesselateReturnsValidGeometry() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let poly = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let result = try poly.tesselate()
     #expect(!result.asWKT().isEmpty)
@@ -65,7 +65,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTesselateSquareGivesTwoTriangles() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // A square has 4 unique vertices → N-2 = 2 triangles
     let poly = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let result = try poly.tesselate()
@@ -73,7 +73,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTesselateResultIsTriangulatedSurface() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Polygon tesselation normally returns a TriangulatedSurface
     let poly = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let result = try poly.tesselate()
@@ -81,7 +81,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTesselateResultIsOwned() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Result must remain valid after the input is deallocated
     let result: Geometry
     do {
@@ -93,7 +93,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTesselatePolygonWithHole() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // 4×4 square with a 2×2 hole — more triangles than a plain square
     let poly = try Geometry.fromWKT(
         "POLYGON((0 0,4 0,4 4,0 4,0 0),(1 1,1 3,3 3,3 1,1 1))"
@@ -108,7 +108,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testTesselateVerticalWallSucceeds() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Building facade: lies in the XZ plane (Y = 0 for all vertices).
     // 2D triangulators project to XY and produce zero-area triangles here.
     // SFCGAL operates in 3D and handles this correctly.
@@ -120,7 +120,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTesselateVerticalWallVerticesAreFinite() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let wall = try Geometry.fromWKT(
         "POLYGON Z ((0 0 0,1 0 0,1 0 3,0 0 3,0 0 0))"
     )
@@ -132,7 +132,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTesselateVerticalWallYIsConstant() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // All input vertices have Y = 0 → all output Y values must be 0
     let wall = try Geometry.fromWKT(
         "POLYGON Z ((0 0 0,1 0 0,1 0 3,0 0 3,0 0 0))"
@@ -149,7 +149,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testTesselateLargePolygonTriangleCount() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // A convex N-gon with N unique vertices produces N-2 triangles.
     // 52-gon → 50 triangles
     let poly = try Geometry.fromWKT(nGonWKT(52))
@@ -158,7 +158,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTesselateLargePolygonVertexCount() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // 50 triangles × 3 vertices × 3 floats = 450 floats
     let poly = try Geometry.fromWKT(nGonWKT(52))
     let vertices = try poly.triangleVertices()
@@ -166,7 +166,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTesselateLargePolygonAllFinite() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let poly = try Geometry.fromWKT(nGonWKT(52))
     let vertices = try poly.triangleVertices()
     for v in vertices {
@@ -179,7 +179,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testTriangleVerticesCountSquare() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Unit square: 2 triangles × 3 verts × 3 floats = 18
     let poly = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let vertices = try poly.triangleVertices()
@@ -187,7 +187,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTriangleVerticesAllFinite() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let poly = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let vertices = try poly.triangleVertices()
     for v in vertices {
@@ -196,7 +196,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTriangleVerticesZeroZ_for2DPolygon() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // 2D polygon → Z channel must be 0.0 everywhere
     let poly = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let vertices = try poly.triangleVertices()
@@ -207,7 +207,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTriangleVerticesXYBoundsSquare() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Unit square: all X in [0,1], all Y in [0,1]
     let poly = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let vertices = try poly.triangleVertices()
@@ -219,7 +219,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTriangleVerticesZPreservedFor3DPolygon() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Square with Z=0 on bottom, Z=10 on top.
     // All output Z values must be either 0.0 or 10.0 (no interpolation).
     let poly = try Geometry.fromWKT(
@@ -235,7 +235,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTriangleVerticesCountMatchesTriangleCount() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Float count must always equal numTriangles × 9
     let poly = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let result = try poly.tesselate()
@@ -248,7 +248,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testTriangulate2DZReturnsValidGeometry() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let poly = try Geometry.fromWKT(
         "POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))"
     )
@@ -258,7 +258,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTriangulate2DZSquareGivesTwoTriangles() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let poly = try Geometry.fromWKT(
         "POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))"
     )
@@ -267,7 +267,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTriangulate2DZPreservesZValues() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Three vertices with distinct Z values (5, 10, 15).
     // The single output triangle must carry those exact Z values.
     let poly = try Geometry.fromWKT(
@@ -289,7 +289,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTriangulate2DZResultIsOwned() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let result: Geometry
     do {
         let poly = try Geometry.fromWKT(
@@ -306,7 +306,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testTesselateAndTriangleVerticesAreConsistent() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // triangleVertices() internally calls tesselate(); their triangle counts
     // must agree.
     let poly = try Geometry.fromWKT(nGonWKT(20))
@@ -316,7 +316,7 @@ private func nGonWKT(_ n: Int, radius: Double = 1.0) -> String {
 }
 
 @Test func testTriangleVerticesFromTINMatchDirectIteration() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Build expected vertices by manually iterating the TIN, then compare
     // with the output of triangleVertices() to confirm internal consistency.
     let poly = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")

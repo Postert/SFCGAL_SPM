@@ -40,21 +40,21 @@ private func disjointSquare() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testIntersection2DOverlap() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Overlap strip [0.5,1]×[0,1] → area = 0.5
     let result = try unitSquare().intersection(rightSquare())
     #expect(almostEqual(try result.area(), 0.5))
 }
 
 @Test func testIntersection2DDisjoint() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // No overlap → empty geometry, area = 0
     let result = try unitSquare().intersection(disjointSquare())
     #expect(almostEqual(try result.area(), 0.0))
 }
 
 @Test func testIntersection2DIdentical() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // A ∩ A = A → area preserved
     let a = try unitSquare()
     let result = try a.intersection(a)
@@ -62,7 +62,7 @@ private func disjointSquare() throws -> Geometry {
 }
 
 @Test func testIntersection2DIsSymmetric() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // A ∩ B == B ∩ A  (area-wise)
     let a = try unitSquare()
     let b = try rightSquare()
@@ -72,7 +72,7 @@ private func disjointSquare() throws -> Geometry {
 }
 
 @Test func testIntersection2DResultIsOwned() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // The result survives the inputs going out of scope
     let result: Geometry
     do {
@@ -89,21 +89,21 @@ private func disjointSquare() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testUnion2DOverlap() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // area(A) + area(B) − area(A∩B) = 1 + 1 − 0.5 = 1.5
     let result = try unitSquare().union(rightSquare())
     #expect(almostEqual(try result.area(), 1.5))
 }
 
 @Test func testUnion2DDisjoint() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Separate polygons → combined area = 1 + 1 = 2.0
     let result = try unitSquare().union(disjointSquare())
     #expect(almostEqual(try result.area(), 2.0))
 }
 
 @Test func testUnion2DIdentical() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // A ∪ A = A → area = 1.0
     let a = try unitSquare()
     let result = try a.union(a)
@@ -111,7 +111,7 @@ private func disjointSquare() throws -> Geometry {
 }
 
 @Test func testUnion2DIsSymmetric() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let a = try unitSquare()
     let b = try rightSquare()
     let ab = try a.union(b)
@@ -124,21 +124,21 @@ private func disjointSquare() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testDifference2DOverlap() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // unitSquare minus rightSquare → left strip [0,0.5]×[0,1] → area = 0.5
     let result = try unitSquare().difference(rightSquare())
     #expect(almostEqual(try result.area(), 0.5))
 }
 
 @Test func testDifference2DDisjoint() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // unitSquare minus something far away → unchanged → area = 1.0
     let result = try unitSquare().difference(disjointSquare())
     #expect(almostEqual(try result.area(), 1.0))
 }
 
 @Test func testDifference2DIdentical() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // A − A = empty → area = 0
     let a = try unitSquare()
     let result = try a.difference(a)
@@ -146,7 +146,7 @@ private func disjointSquare() throws -> Geometry {
 }
 
 @Test func testDifference2DIsAsymmetric() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // A − B ≠ B − A when they only partially overlap
     let a = try unitSquare()
     let b = try rightSquare()
@@ -159,7 +159,7 @@ private func disjointSquare() throws -> Geometry {
 
 // Inclusion–exclusion: area(A) = area(A∩B) + area(A−B)
 @Test func testDifference2DInclusionExclusion() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let a = try unitSquare()
     let b = try rightSquare()
     let inter = try a.intersection(b)
@@ -173,7 +173,7 @@ private func disjointSquare() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testIntersection3DCoplanarOverlap() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Two flat polygons at z=0, overlapping in strip x∈[0.5,1] → area3D = 0.5
     let a = try Geometry.fromWKT("POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))")
     let b = try Geometry.fromWKT("POLYGON Z ((0.5 0 0,1.5 0 0,1.5 1 0,0.5 1 0,0.5 0 0))")
@@ -182,7 +182,7 @@ private func disjointSquare() throws -> Geometry {
 }
 
 @Test func testIntersection3DDifferentZIsEmpty() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Same XY footprint but at different Z → no 3D intersection
     let low  = try Geometry.fromWKT("POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))")
     let high = try Geometry.fromWKT("POLYGON Z ((0 0 5,1 0 5,1 1 5,0 1 5,0 0 5))")
@@ -191,7 +191,7 @@ private func disjointSquare() throws -> Geometry {
 }
 
 @Test func testIntersection3DIsSymmetric() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let a = try Geometry.fromWKT("POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))")
     let b = try Geometry.fromWKT("POLYGON Z ((0.5 0 0,1.5 0 0,1.5 1 0,0.5 1 0,0.5 0 0))")
     let ab = try a.intersection3D(b)
@@ -204,7 +204,7 @@ private func disjointSquare() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testUnion3DCoplanarOverlap() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // area(A) + area(B) − area(A∩B) = 1 + 1 − 0.5 = 1.5
     let a = try Geometry.fromWKT("POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))")
     let b = try Geometry.fromWKT("POLYGON Z ((0.5 0 0,1.5 0 0,1.5 1 0,0.5 1 0,0.5 0 0))")
@@ -213,7 +213,7 @@ private func disjointSquare() throws -> Geometry {
 }
 
 @Test func testUnion3DIsSymmetric() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let a = try Geometry.fromWKT("POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))")
     let b = try Geometry.fromWKT("POLYGON Z ((0.5 0 0,1.5 0 0,1.5 1 0,0.5 1 0,0.5 0 0))")
     let ab = try a.union3D(b)
@@ -226,7 +226,7 @@ private func disjointSquare() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testDifference3DCoplanarOverlap() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // a minus overlapping b → left strip [0,0.5]×[0,1] → area3D = 0.5
     let a = try Geometry.fromWKT("POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))")
     let b = try Geometry.fromWKT("POLYGON Z ((0.5 0 0,1.5 0 0,1.5 1 0,0.5 1 0,0.5 0 0))")
@@ -235,7 +235,7 @@ private func disjointSquare() throws -> Geometry {
 }
 
 @Test func testDifference3DIdentical() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // A − A = empty → area3D = 0
     let a = try Geometry.fromWKT("POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))")
     let result = try a.difference3D(a)
@@ -244,7 +244,7 @@ private func disjointSquare() throws -> Geometry {
 
 // Inclusion–exclusion in 3D: area3D(A) = area3D(A∩B) + area3D(A−B)
 @Test func testDifference3DInclusionExclusion() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let a = try Geometry.fromWKT("POLYGON Z ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0))")
     let b = try Geometry.fromWKT("POLYGON Z ((0.5 0 0,1.5 0 0,1.5 1 0,0.5 1 0,0.5 0 0))")
     let inter = try a.intersection3D(b)
@@ -258,7 +258,7 @@ private func disjointSquare() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testBooleanResultIsTyped() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Intersection of two polygons should come back as a Polygon (or subtype)
     let result = try unitSquare().intersection(rightSquare())
     // Result must be a non-empty geometry with valid WKT
@@ -267,14 +267,14 @@ private func disjointSquare() throws -> Geometry {
 }
 
 @Test func testUnionResultIsTyped() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let result = try unitSquare().union(rightSquare())
     #expect(!result.asWKT().isEmpty)
     #expect(result.isValid)
 }
 
 @Test func testDifferenceResultIsTyped() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let result = try unitSquare().difference(rightSquare())
     #expect(!result.asWKT().isEmpty)
     #expect(result.isValid)
@@ -285,7 +285,7 @@ private func disjointSquare() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testIntersectionResultRoundtripsWKB() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let result = try unitSquare().intersection(rightSquare())
     let wkb    = result.asWKB()
     #expect(!wkb.isEmpty)

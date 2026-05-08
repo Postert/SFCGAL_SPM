@@ -36,7 +36,7 @@ private func lShape() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testConvexHullOfSquareIsSquare() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // A unit square is already convex — the hull has the same area.
     let square = try unitSquare2D()
     let hull   = try square.convexHull()
@@ -44,7 +44,7 @@ private func lShape() throws -> Geometry {
 }
 
 @Test func testConvexHullEnclosesNonConvexPolygon() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // L-shape vertices: (0,0),(4,0),(4,2),(2,2),(2,4),(0,4).
     // The convex hull excludes the concave corner (2,2) and connects
     // (4,2) directly to (2,4), giving the pentagon
@@ -56,7 +56,7 @@ private func lShape() throws -> Geometry {
 }
 
 @Test func testConvexHullOfPointsIsPolygon() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Convex hull of 4 corner points = unit square (area 1).
     let pts  = try Geometry.fromWKT("MULTIPOINT(0 0,1 0,1 1,0 1)")
     let hull = try pts.convexHull()
@@ -64,14 +64,14 @@ private func lShape() throws -> Geometry {
 }
 
 @Test func testConvexHullResultIsValid() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let l    = try lShape()
     let hull = try l.convexHull()
     #expect(hull.isValid)
 }
 
 @Test func testConvexHullResultIsOwned() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let result: Geometry
     do {
         let l = try lShape()
@@ -87,7 +87,7 @@ private func lShape() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testConvexHull3DOfCubeCorners() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // 8 corner points of a unit cube → 3D convex hull is the cube.
     // Cube has 6 faces × area 1 = total 3D surface area = 6.
     let pts = try Geometry.fromWKT(
@@ -99,7 +99,7 @@ private func lShape() throws -> Geometry {
 }
 
 @Test func testConvexHull3DResultIsOwned() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let result: Geometry
     do {
         let pts = try Geometry.fromWKT(
@@ -115,7 +115,7 @@ private func lShape() throws -> Geometry {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testMedialAxisOfRectangleHasPositiveLength() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // A long rectangle has a clear medial axis (centerline).  Its length must
     // be strictly positive — we don't pin a specific value because the exact
     // shape depends on SFCGAL's approximation algorithm.
@@ -126,7 +126,7 @@ private func lShape() throws -> Geometry {
 }
 
 @Test func testMedialAxisResultIsOwned() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let result: Geometry
     do {
         let rect = try Geometry.fromWKT("POLYGON((0 0,10 0,10 1,0 1,0 0))")
@@ -146,7 +146,7 @@ private func lShape() throws -> Geometry {
 
 #if !os(Windows)
 @Test func testAlphaShapesProducesNonEmpty() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Square arrangement of 4 points + center (5 points total) — the alpha
     // shape with sufficiently large alpha should enclose them.
     let pts = try Geometry.fromWKT("MULTIPOINT(0 0,1 0,1 1,0 1,0.5 0.5)")
@@ -155,7 +155,7 @@ private func lShape() throws -> Geometry {
 }
 
 @Test func testAlphaShapesLargeAlphaApproachesConvexHull() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // For 5 corner-and-centre points of a unit square, a large alpha should
     // give an alpha shape with the same area as the convex hull (1.0).
     let pts   = try Geometry.fromWKT("MULTIPOINT(0 0,1 0,1 1,0 1,0.5 0.5)")
@@ -164,7 +164,7 @@ private func lShape() throws -> Geometry {
 }
 
 @Test func testAlphaShapesAllowHolesParam() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Both branches must be callable; we don't assert specific area since the
     // hole-permitting branch may or may not produce holes for this input.
     let pts   = try Geometry.fromWKT("MULTIPOINT(0 0,1 0,1 1,0 1,0.5 0.5)")
@@ -175,7 +175,7 @@ private func lShape() throws -> Geometry {
 }
 
 @Test func testOptimalAlphaShapesOneComponent() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let pts   = try Geometry.fromWKT("MULTIPOINT(0 0,1 0,1 1,0 1,0.5 0.5)")
     let shape = try pts.optimalAlphaShapes(allowHoles: false, components: 1)
     #expect(!shape.asWKT().isEmpty)
@@ -230,7 +230,7 @@ struct AlphaWrapping3DTests {
     }
 
     @Test func producesConnectedSurface() throws {
-        initializeSFCGAL()
+        TestSupport.initializeSFCGALOnce()
         let cloud = try Geometry.fromWKT(Self.fibonacciSphereWKT())
         let wrap  = try cloud.alphaWrapping3D(relativeAlpha: 4, relativeOffset: 0)
         // Cheap proof of non-trivial output: PolyhedralSurface with ≥ 1 patch.
@@ -244,7 +244,7 @@ struct AlphaWrapping3DTests {
     }
 
     @Test func resultIsPolyhedralSurface() throws {
-        initializeSFCGAL()
+        TestSupport.initializeSFCGALOnce()
         // SFCGAL's algorithm::alphaWrapping3D returns
         // std::unique_ptr<PolyhedralSurface>; verify the Swift-side type matches.
         let cloud = try Geometry.fromWKT(Self.fibonacciSphereWKT())
@@ -253,7 +253,7 @@ struct AlphaWrapping3DTests {
     }
 
     @Test func resultIsOwned() throws {
-        initializeSFCGAL()
+        TestSupport.initializeSFCGALOnce()
         let result: Geometry
         do {
             let cloud = try Geometry.fromWKT(Self.fibonacciSphereWKT())
@@ -269,7 +269,7 @@ struct AlphaWrapping3DTests {
     }
 
     @Test func aggressiveOffsetCanFragment() throws {
-        initializeSFCGAL()
+        TestSupport.initializeSFCGALOnce()
         // `relativeOffset` is a divisor of the bbox diagonal: huge values
         // shrink the offset to near-zero (600 → ~diag/600), fragmenting the
         // wrap output.  When that happens, `PolyhedralSurface(Mesh)` throws
@@ -296,7 +296,7 @@ struct AlphaWrapping3DTests {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testYMonotonePartitionPreservesArea() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // A partition of an L-shape must cover exactly the same total area (12).
     let l         = try lShape()
     let partition = try l.yMonotonePartition()
@@ -305,7 +305,7 @@ struct AlphaWrapping3DTests {
 }
 
 @Test func testApproximateConvexPartitionPreservesArea() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let l         = try lShape()
     let partition = try l.approximateConvexPartition()
     #expect(!partition.asWKT().isEmpty)
@@ -313,7 +313,7 @@ struct AlphaWrapping3DTests {
 }
 
 @Test func testGreeneConvexPartitionPreservesArea() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let l         = try lShape()
     let partition = try l.greeneConvexPartition()
     #expect(!partition.asWKT().isEmpty)
@@ -321,7 +321,7 @@ struct AlphaWrapping3DTests {
 }
 
 @Test func testOptimalConvexPartitionPreservesArea() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let l         = try lShape()
     let partition = try l.optimalConvexPartition()
     #expect(!partition.asWKT().isEmpty)
@@ -329,7 +329,7 @@ struct AlphaWrapping3DTests {
 }
 
 @Test func testOptimalConvexPartitionLShapeProducesMultiplePieces() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // An L-shape is non-convex, so any convex partition must yield ≥ 2 pieces.
     let l         = try lShape()
     let partition = try l.optimalConvexPartition()
@@ -343,7 +343,7 @@ struct AlphaWrapping3DTests {
 }
 
 @Test func testPartitionResultIsOwned() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let result: Geometry
     do {
         let l = try lShape()
@@ -358,7 +358,7 @@ struct AlphaWrapping3DTests {
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Test func testValidationDetailValidGeometry() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let square = try unitSquare2D()
     let detail = square.validationDetail()
     #expect(detail.isValid)
@@ -366,7 +366,7 @@ struct AlphaWrapping3DTests {
 }
 
 @Test func testValidationDetailInvalidGeometry() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Self-intersecting bowtie polygon — should be invalid with a reason.
     let bowtie = try Geometry.fromWKT("POLYGON((0 0,1 1,1 0,0 1,0 0))")
     let detail = bowtie.validationDetail()
@@ -376,7 +376,7 @@ struct AlphaWrapping3DTests {
 }
 
 @Test func testValidationDetailMatchesValidationResult() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // The tuple convenience must agree with the richer struct API.
     let square    = try unitSquare2D()
     let tuple     = square.validationDetail()
