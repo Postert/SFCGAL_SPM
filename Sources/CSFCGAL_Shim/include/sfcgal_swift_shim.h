@@ -64,4 +64,32 @@ size_t sfcgal_swift_batch_tesselate(const sfcgal_geometry_t *const *geometries,
                                     size_t count,
                                     sfcgal_geometry_t **out_results);
 
+/// Like sfcgal_swift_batch_tesselate, but also fills out_errors[i] with a
+/// pointer to a thread-local static error string for each failed geometry
+/// (NULL on success). Strings are valid until the next call on this thread.
+///
+/// Returns the number of geometries successfully tesselated.
+size_t sfcgal_swift_batch_tesselate_ex(
+    const sfcgal_geometry_t *const *geometries,
+    size_t count,
+    sfcgal_geometry_t **out_results,
+    const char **out_errors);
+
+/// Parse WKT -> tesselate -> extract interleaved x,y,z vertex data in one call.
+/// Designed for GPU upload pipelines (e.g. CityGML surfaces -> RealityKit mesh).
+///
+/// out_vertices:      caller-allocated float buffer (interleaved x,y,z triples)
+/// out_vertex_counts: caller-allocated array of count size_t slots;
+///                    out_vertex_counts[i] is the number of vertices for geometry i
+/// out_capacity:      total capacity of out_vertices in number of floats
+///
+/// Returns total floats written, or 0 on complete failure. Check
+/// sfcgal_swift_has_error() for partial failures.
+size_t sfcgal_swift_batch_wkt_to_vertices(
+    const char **wkt_inputs,
+    size_t count,
+    float *out_vertices,
+    size_t *out_vertex_counts,
+    size_t out_capacity);
+
 #endif /* SFCGAL_SWIFT_SHIM_H */
