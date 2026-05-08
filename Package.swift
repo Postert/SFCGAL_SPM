@@ -9,6 +9,7 @@ let package = Package(
     ],
     products: [
         .library(name: "SwiftSFCGAL", targets: ["SwiftSFCGAL"]),
+        .executable(name: "BatchOperationsBenchmark", targets: ["BatchOperationsBenchmark"]),
     ],
     targets: [
         // ── The public Swift API ──
@@ -68,6 +69,12 @@ let package = Package(
         ),
 
         // ── Tests ──
+        .executableTarget(
+            name: "BatchOperationsBenchmark",
+            dependencies: ["SwiftSFCGAL"],
+            path: "Benchmarks/BatchOperationsBenchmark"
+        ),
+
         .testTarget(name: "SwiftSFCGALTests", dependencies: ["SwiftSFCGAL", "CSFCGAL_Shim"]),
     ]
 )
