@@ -109,10 +109,11 @@ extension Geometry {
     /// > `sfcgal_geometry_alpha_shapes` via `#if !_MSC_VER` in `sfcgal_c.h`.
     ///
     /// - Parameters:
-    ///   - alpha: Maximum disc radius. Larger values → fewer concavities.
+    ///   - alpha: Maximum disc radius. Defaults to 1.0, matching
+    ///     `SFCGAL::algorithm::alphaShapes`. Larger values produce fewer concavities.
     ///   - allowHoles: Whether the result may contain interior holes.
     /// - Throws: `SFCGALError.operationFailed` on degenerate input.
-    public func alphaShapes(alpha: Double, allowHoles: Bool = false) throws -> Geometry {
+    public func alphaShapes(alpha: Double = 1.0, allowHoles: Bool = false) throws -> Geometry {
         guard let ptr = try sfcgalCall({
             sfcgal_geometry_alpha_shapes(handle, alpha, allowHoles)
         }) else {

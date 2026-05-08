@@ -39,9 +39,12 @@ import Testing
 #if !os(Windows)
 @Test func upstreamAlphaShapes2DCases() throws {
     // Upstream: algorithm/AlphaShapesTest.cpp / triangle, polygon, multipoint cases.
-    let triangle = try UpstreamParity.geometry("MULTIPOINT ((0 0),(1 0),(0 1))")
-        .alphaShapes(alpha: 10.0)
+    let triangle = try UpstreamParity.geometry("LINESTRING (0 0,0.5 0.5,1 0,0 1)")
+        .alphaShapes()
     #expect(triangle.geometryTypeID == UpstreamParity.polygonTypeID)
+    UpstreamParity.expectWKT(triangle, decimals: 1,
+                             equals: "POLYGON ((0.0 0.0,0.0 1.0,0.5 0.5,1.0 0.0,0.0 0.0))",
+                             "AlphaShapesTest.cpp / testAlphaShapes2D_Triangle")
 
     let multiPoint = try UpstreamParity.geometry("MULTIPOINT ((0 0),(1 0),(1 1),(0 1),(0.5 0.5))")
         .optimalAlphaShapes()
