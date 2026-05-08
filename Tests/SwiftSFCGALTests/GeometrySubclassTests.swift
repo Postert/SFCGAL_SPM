@@ -9,7 +9,7 @@ import Foundation
 // MARK: - Point
 
 @Test func testPointCreate2D() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p = try Point(x: 3.0, y: 4.0)
     #expect(p.x == 3.0)
     #expect(p.y == 4.0)
@@ -18,7 +18,7 @@ import Foundation
 }
 
 @Test func testPointCreate3D() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p = try Point(x: 1.0, y: 2.0, z: 5.5)
     #expect(p.x == 1.0)
     #expect(p.y == 2.0)
@@ -27,7 +27,7 @@ import Foundation
 }
 
 @Test func testPointWKTRoundtrip() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p = try Point(x: 7.0, y: 8.0, z: 9.0)
     let wkt = p.asWKT()
     #expect(wkt.contains("POINT"))
@@ -37,7 +37,7 @@ import Foundation
 }
 
 @Test func testPointFromWKT() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry.fromWKT("POINT(10 20 30)")
     let p = try #require(geom as? Point)
     #expect(p.x == 10.0)
@@ -46,7 +46,7 @@ import Foundation
 }
 
 @Test func testPointCloneIsTyped() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try Point(x: 1.0, y: 2.0, z: 3.0)
     let cloned = try original.clone()
     let typedClone = try #require(cloned as? Point)
@@ -59,7 +59,7 @@ import Foundation
 // MARK: - LineString
 
 @Test func testLineStringCreateAndAddPoints() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let ls = try LineString()
     let p0 = try Point(x: 0.0, y: 0.0)
     let p1 = try Point(x: 1.0, y: 1.0)
@@ -71,7 +71,7 @@ import Foundation
 }
 
 @Test func testLineStringPointAt() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let ls = try LineString()
     try ls.addPoint(Point(x: 5.0, y: 6.0))
     try ls.addPoint(Point(x: 7.0, y: 8.0))
@@ -84,7 +84,7 @@ import Foundation
 }
 
 @Test func testLineStringFromWKT() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry.fromWKT("LINESTRING(0 0,1 1,2 0)")
     let ls = try #require(geom as? LineString)
     #expect(ls.numPoints == 3)
@@ -92,7 +92,7 @@ import Foundation
 }
 
 @Test func testLineStringPoints() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let ls = try LineString()
     try ls.addPoint(Point(x: 1.0, y: 2.0))
     try ls.addPoint(Point(x: 3.0, y: 4.0))
@@ -105,14 +105,14 @@ import Foundation
 // MARK: - Polygon
 
 @Test func testPolygonCreate() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p = try Polygon()
     #expect(p.geometryType == "Polygon")
     #expect(p.numInteriorRings == 0)
 }
 
 @Test func testPolygonFromExteriorRing() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let ring = try LineString()
     for (x, y) in [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0),(0.0,0.0)] {
         try ring.addPoint(Point(x: x, y: y))
@@ -124,14 +124,14 @@ import Foundation
 }
 
 @Test func testPolygonFromWKT() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let polygon = try #require(geom as? Polygon)
     #expect(polygon.exteriorRing.numPoints == 5)
 }
 
 @Test func testPolygonWithHole() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry.fromWKT(
         "POLYGON((0 0,10 0,10 10,0 10,0 0),(2 2,2 8,8 8,8 2,2 2))"
     )
@@ -144,7 +144,7 @@ import Foundation
 // MARK: - Triangle
 
 @Test func testTriangleCreate() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let a = try Point(x: 0.0, y: 0.0, z: 0.0)
     let b = try Point(x: 1.0, y: 0.0, z: 0.0)
     let c = try Point(x: 0.0, y: 1.0, z: 0.0)
@@ -156,7 +156,7 @@ import Foundation
 }
 
 @Test func testTriangleFromWKT() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry.fromWKT("TRIANGLE((0 0 0,1 0 0,0 1 0,0 0 0))")
     let tri = try #require(geom as? Triangle)
     #expect(tri.vertex(0).x == 0.0)
@@ -166,7 +166,7 @@ import Foundation
 // MARK: - GeometryCollection
 
 @Test func testGeometryCollectionCreate() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let col = try GeometryCollection()
     #expect(col.numGeometries == 0)
     try col.addGeometry(Point(x: 1.0, y: 2.0))
@@ -174,7 +174,7 @@ import Foundation
 }
 
 @Test func testGeometryCollectionFromWKT() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry.fromWKT(
         "GEOMETRYCOLLECTION(POINT(1 2),LINESTRING(0 0,1 1))"
     )
@@ -189,7 +189,7 @@ import Foundation
 // MARK: - MultiPoint
 
 @Test func testMultiPointCreate() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let mp = try MultiPoint()
     try mp.addGeometry(Point(x: 1.0, y: 2.0))
     try mp.addGeometry(Point(x: 3.0, y: 4.0))
@@ -199,7 +199,7 @@ import Foundation
 }
 
 @Test func testMultiPointFromWKT() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry.fromWKT("MULTIPOINT((0 0),(1 1),(2 2))")
     let mp = try #require(geom as? MultiPoint)
     #expect(mp.numGeometries == 3)
@@ -208,7 +208,7 @@ import Foundation
 // MARK: - MultiLineString
 
 @Test func testMultiLineStringFromWKT() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry.fromWKT("MULTILINESTRING((0 0,1 1),(2 2,3 3))")
     let mls = try #require(geom as? MultiLineString)
     #expect(mls.numGeometries == 2)
@@ -218,7 +218,7 @@ import Foundation
 // MARK: - MultiPolygon
 
 @Test func testMultiPolygonFromWKT() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry.fromWKT(
         "MULTIPOLYGON(((0 0,1 0,1 1,0 1,0 0)),((2 2,3 2,3 3,2 3,2 2)))"
     )
@@ -230,14 +230,14 @@ import Foundation
 // MARK: - PolyhedralSurface
 
 @Test func testPolyhedralSurfaceCreate() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let ps = try PolyhedralSurface()
     #expect(ps.numPatches == 0)
     #expect(ps.geometryType == "PolyhedralSurface")
 }
 
 @Test func testPolyhedralSurfaceFromWKT() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let wkt = """
     POLYHEDRALSURFACE Z (
       ((0 0 0,1 0 0,1 1 0,0 1 0,0 0 0)),
@@ -254,14 +254,14 @@ import Foundation
 // MARK: - TriangulatedSurface
 
 @Test func testTriangulatedSurfaceCreate() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let tin = try TriangulatedSurface()
     #expect(tin.numPatches == 0)
     #expect(tin.geometryType == "TriangulatedSurface")
 }
 
 @Test func testTriangulatedSurfaceFromWKT() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let wkt = "TIN Z (((0 0 0,1 0 0,0 1 0,0 0 0)),((1 0 0,1 1 0,0 1 0,1 0 0)))"
     let geom = try Geometry.fromWKT(wkt)
     let tin = try #require(geom as? TriangulatedSurface)
@@ -273,13 +273,13 @@ import Foundation
 // MARK: - Solid
 
 @Test func testSolidCreate() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let solid = try Solid()
     #expect(solid.geometryType == "Solid")
 }
 
 @Test func testSolidFromWKT() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Simple unit-cube solid
     let wkt = """
     SOLID Z (
@@ -304,7 +304,7 @@ import Foundation
 // MARK: - fromWKT factory dispatch
 
 @Test func testFromWKTReturnsCorrectSubclasses() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // AnyClass (= AnyObject.Type) lets us store heterogeneous class metatypes.
     // ObjectIdentifier gives a stable identity comparison between metatypes.
     let cases: [(String, AnyClass)] = [
@@ -329,7 +329,7 @@ import Foundation
 // MARK: - Borrowed-handle lifetime safety
 
 @Test func testBorrowedPointFromLineStringIsStable() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let ls = try LineString()
     try ls.addPoint(Point(x: 42.0, y: 99.0))
     let borrowed = ls.pointAt(0)
@@ -339,7 +339,7 @@ import Foundation
 }
 
 @Test func testBorrowedRingFromPolygonIsStable() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let polygon = try #require(geom as? Polygon)
     let ring = polygon.exteriorRing   // borrowed reference

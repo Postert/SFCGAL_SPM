@@ -9,7 +9,7 @@ import Foundation
 // MARK: - WKB round-trip
 
 @Test func testWKBRoundtripPoint() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try Point(x: 1.5, y: 2.5)
     let wkb      = original.asWKB()
     #expect(!wkb.isEmpty)
@@ -20,7 +20,7 @@ import Foundation
 }
 
 @Test func testWKBRoundtripPolygon() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let wkb      = original.asWKB()
     #expect(!wkb.isEmpty)
@@ -31,7 +31,7 @@ import Foundation
 }
 
 @Test func testWKBRoundtripLineString() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try Geometry.fromWKT("LINESTRING(0 0,1 1,2 0)")
     let wkb      = original.asWKB()
     let parsed   = try Geometry.fromWKB(wkb)
@@ -41,7 +41,7 @@ import Foundation
 }
 
 @Test func testWKBRoundtripPoint3D() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try Point(x: 10.0, y: 20.0, z: 30.0)
     let wkb      = original.asWKB()
     let parsed   = try Geometry.fromWKB(wkb)
@@ -55,14 +55,14 @@ import Foundation
 // MARK: - WKB error handling
 
 @Test func testWKBFromEmptyDataThrows() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     #expect(throws: SFCGALError.self) {
         _ = try Geometry.fromWKB(Data())
     }
 }
 
 @Test func testWKBFromInvalidDataThrows() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Random bytes that are not valid WKB
     let garbage = Data([0xFF, 0xFE, 0x00, 0x01, 0x02])
     #expect(throws: SFCGALError.self) {
@@ -73,7 +73,7 @@ import Foundation
 // MARK: - Hex WKB round-trip
 
 @Test func testHexWKBRoundtripPoint() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try Point(x: 3.0, y: 4.0)
     let hex      = original.asHexWKB()
     #expect(!hex.isEmpty)
@@ -86,7 +86,7 @@ import Foundation
 }
 
 @Test func testHexWKBRoundtripPolygon() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try Geometry.fromWKT("POLYGON((0 0,2 0,2 2,0 2,0 0))")
     let hex      = original.asHexWKB()
     #expect(!hex.isEmpty)
@@ -95,7 +95,7 @@ import Foundation
 }
 
 @Test func testHexWKBIsValidHexString() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry.fromWKT("POINT(7 8)")
     let hex  = geom.asHexWKB()
     // Every character must be a valid hex digit
@@ -104,21 +104,21 @@ import Foundation
 }
 
 @Test func testFromHexWKBEmptyStringThrows() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     #expect(throws: SFCGALError.self) {
         _ = try Geometry.fromHexWKB("")
     }
 }
 
 @Test func testFromHexWKBOddLengthThrows() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     #expect(throws: SFCGALError.self) {
         _ = try Geometry.fromHexWKB("ABC")   // odd length — not valid hex pairs
     }
 }
 
 @Test func testFromHexWKBInvalidCharsThrows() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     #expect(throws: SFCGALError.self) {
         _ = try Geometry.fromHexWKB("ZZZZ") // valid length, invalid hex chars
     }
@@ -127,7 +127,7 @@ import Foundation
 // MARK: - EWKT reading
 
 @Test func testFromEWKTExtractsGeometry() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry.fromEWKT("SRID=4326;POINT(1 2)")
     let p    = try #require(geom as? Point)
     #expect(p.x == 1.0)
@@ -135,7 +135,7 @@ import Foundation
 }
 
 @Test func testParseEWKTPreservesSRID() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let result = try Geometry.parseEWKT("SRID=4326;POINT(1 2)")
     #expect(result.srid == 4326)
     let p = try #require(result.geometry as? Point)
@@ -143,14 +143,14 @@ import Foundation
 }
 
 @Test func testParseEWKTPolygon() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let result = try Geometry.parseEWKT("SRID=32632;POLYGON((0 0,1 0,1 1,0 1,0 0))")
     #expect(result.srid == 32632)
     #expect(result.geometry is Polygon)
 }
 
 @Test func testParseEWKTNoSRIDDefaultsToZero() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Plain WKT without SRID prefix — SFCGAL should parse it via EWKT parser
     // and return SRID 0 (the "no SRID" sentinel).
     let result = try Geometry.parseEWKT("POINT(5 6)")
@@ -160,7 +160,7 @@ import Foundation
 }
 
 @Test func testFromEWKTInvalidThrows() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     #expect(throws: SFCGALError.self) {
         _ = try Geometry.fromEWKT("NOT_VALID_EWKT")
     }
@@ -169,7 +169,7 @@ import Foundation
 // MARK: - EWKT writing
 
 @Test func testAsEWKTContainsSRID() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p    = try Point(x: 1.0, y: 2.0)
     let ewkt = p.asEWKT(srid: 4326)
     #expect(ewkt.contains("SRID=4326"))
@@ -177,7 +177,7 @@ import Foundation
 }
 
 @Test func testAsEWKTRoundtrip() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try Point(x: 10.0, y: 20.0)
     let ewkt     = original.asEWKT(srid: 4326)
     let result   = try Geometry.parseEWKT(ewkt)
@@ -188,7 +188,7 @@ import Foundation
 }
 
 @Test func testAsEWKTPolygonRoundtrip() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try Geometry.fromWKT("POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let ewkt     = original.asEWKT(srid: 32632)
     #expect(ewkt.contains("SRID=32632"))
@@ -198,7 +198,7 @@ import Foundation
 }
 
 @Test func testAsEWKTDecimalPrecision() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p    = try Point(x: 1.123456789, y: 2.987654321)
     let full = p.asEWKT(srid: 4326)
     let two  = p.asEWKT(srid: 4326, decimals: 2)
@@ -210,7 +210,7 @@ import Foundation
 // MARK: - WKT precision (asWKT overloads)
 
 @Test func testAsWKTDecimalPlacesInt() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p    = try Point(x: 1.123456789, y: 2.987654321)
     let full = p.asWKT()
     let two  = p.asWKT(decimalPlaces: 2)
@@ -219,7 +219,7 @@ import Foundation
 }
 
 @Test func testAsWKTZeroDecimals() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let p   = try Point(x: 1.9, y: 2.1)
     let wkt = p.asWKT(decimalPlaces: 0)
     // With 0 decimals all coordinates should be integers — no decimal point
@@ -229,7 +229,7 @@ import Foundation
 // MARK: - WKB / EWKT independence
 
 @Test func testWKBAndEWKTAreIndependent() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     // Both formats encode the same point — verify coordinates match
     let original = try Point(x: 42.0, y: 7.0)
     let fromWKB  = try Geometry.fromWKB(original.asWKB())

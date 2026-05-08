@@ -40,6 +40,30 @@ jobs:
       - name: Run tests
         run: swift test
 
+  test-macos-asan:
+    name: Swift on macOS with Address Sanitizer
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Install SFCGAL
+        run: brew install sfcgal
+
+      - name: Verify SFCGAL version
+        run: |
+          INSTALLED=$(pkg-config --modversion sfcgal)
+          echo "Installed: $INSTALLED (required: $SFCGAL_VERSION)"
+          [ "$INSTALLED" = "$SFCGAL_VERSION" ] || {
+            echo "::error::SFCGAL version mismatch: expected $SFCGAL_VERSION, got $INSTALLED"
+            exit 1
+          }
+
+      - name: Run tests with Address Sanitizer
+        run: swift test --sanitize=address
+
   test-ios:
     name: Swift on iOS Simulator
     runs-on: macos-latest
@@ -205,4 +229,4 @@ jobs:
           set "PATH=%SFCGAL_PREFIX:/=\%\bin;%PATH%"
           set "LIB=%SFCGAL_PREFIX:/=\%\lib;%LIB%"
           set "INCLUDE=%SFCGAL_PREFIX:/=\%\include;%INCLUDE%"
-          swift test -Xcc -I%SFCGAL_PREFIX%/include
+          swift test -Xcc -I%SFCGAL_PREFIX%/include -Xlinker /LIBPATH:%SFCGAL_PREFIX:/=\%\lib

@@ -12,13 +12,14 @@ import CSFCGAL_Shim
 
 // 1. Init test — calling twice must not crash
 @Test func testInitIsIdempotent() {
+    TestSupport.initializeSFCGALOnce()
     initializeSFCGAL()
     initializeSFCGAL()
 }
 
 // 2. Error capture — invalid WKT must set error, not crash
 @Test func testErrorCapturedOnInvalidWKT() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     sfcgal_swift_clear_errors()
     let result = sfcgal_io_read_wkt("NOT VALID WKT", 13)
     #expect(sfcgal_swift_has_error() == 1)
@@ -28,7 +29,7 @@ import CSFCGAL_Shim
 
 // 3. Error is cleared between operations
 @Test func testErrorClearsCorrectly() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     sfcgal_swift_clear_errors()
     _ = sfcgal_io_read_wkt("NOT VALID WKT", 13)
     sfcgal_swift_clear_errors()
@@ -38,7 +39,7 @@ import CSFCGAL_Shim
 
 // 6. sfcgalCall throws SFCGALError on invalid input
 @Test func testSfcgalCallThrowsOnError() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     #expect(throws: SFCGALError.self) {
         try sfcgalCall {
             sfcgal_io_read_wkt("NOT VALID WKT", 13)
@@ -48,7 +49,7 @@ import CSFCGAL_Shim
 
 // 7. sfcgalCall returns result and does not throw on valid input
 @Test func testSfcgalCallSucceeds() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let wkt = "POINT(1 2)"
     let geom = try sfcgalCall { sfcgal_io_read_wkt(wkt, wkt.utf8.count) }
     defer { if let g = geom { sfcgal_geometry_delete(g) } }
@@ -59,7 +60,7 @@ import CSFCGAL_Shim
 //    Uses real Foundation threads (not Swift Tasks) to guarantee separate
 //    thread-local storage slots.
 @Test func testThreadLocalIsolation() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
 
     // Class box to share result across thread boundaries without a data race —
     // accesses are serialised by the semaphores below.
@@ -89,7 +90,7 @@ import CSFCGAL_Shim
 
 // 5. Warning is captured separately — does not set the error flag
 @Test func testWarningCapturedWithoutSettingErrorFlag() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     sfcgal_swift_clear_errors()
     sfcgal_swift_inject_warning_for_testing("test warning message")
     #expect(sfcgal_swift_has_error() == 0,   "warning must not set the error flag")
@@ -98,7 +99,7 @@ import CSFCGAL_Shim
 
 // 6. Warning is cleared by sfcgal_swift_clear_errors
 @Test func testWarningClearedCorrectly() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     sfcgal_swift_clear_errors()
     sfcgal_swift_inject_warning_for_testing("will be cleared")
     sfcgal_swift_clear_errors()
@@ -107,7 +108,7 @@ import CSFCGAL_Shim
 
 // 7. Warning and error are independent — both can be set simultaneously
 @Test func testWarningAndErrorAreIndependent() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     sfcgal_swift_clear_errors()
     sfcgal_swift_inject_warning_for_testing("concurrent warning")
     _ = sfcgal_io_read_wkt("INVALID", 7)   // sets error flag
@@ -119,7 +120,7 @@ import CSFCGAL_Shim
 
 // 9. Parse a point from WKT and check its type
 @Test func testGeometryPointFromWKT() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry(wkt: "POINT(1.0 2.0 3.0)")
     #expect(geom.geometryType == "Point")
     #expect(geom.geometryTypeID == 1 as UInt32)   // SFCGAL_TYPE_POINT = 1
@@ -128,7 +129,7 @@ import CSFCGAL_Shim
 
 // 10. Invalid WKT must throw SFCGALError.operationFailed, not crash
 @Test func testGeometryInvalidWKTThrows() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     #expect(throws: SFCGALError.self) {
         _ = try Geometry(wkt: "NOT_A_GEOMETRY")
     }
@@ -136,7 +137,7 @@ import CSFCGAL_Shim
 
 // 11. WKT round-trip — parse then serialise
 @Test func testGeometryWKTRoundtrip() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry(wkt: "POLYGON((0 0,1 0,1 1,0 1,0 0))")
     let output = geom.asWKT()
     #expect(output.contains("POLYGON"))
@@ -145,7 +146,7 @@ import CSFCGAL_Shim
 
 // 12. asWKT with decimal precision
 @Test func testGeometryAsWKTDecimals() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let geom = try Geometry(wkt: "POINT(1.123456789 2.987654321)")
     let wkt2 = geom.asWKT(decimals: 2)
     #expect(wkt2.contains("POINT"))
@@ -155,7 +156,7 @@ import CSFCGAL_Shim
 
 // 13. clone() produces an independent copy
 @Test func testGeometryClone() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let original = try Geometry(wkt: "POINT(1 2 3)")
     let copy = try original.clone()
     // Independent objects with the same WKT
@@ -166,7 +167,7 @@ import CSFCGAL_Shim
 
 // 14. Polygon validity
 @Test func testGeometryValidPolygon() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let valid = try Geometry(wkt: "POLYGON((0 0,1 0,1 1,0 1,0 0))")
     #expect(valid.isValid)
 }
@@ -174,7 +175,7 @@ import CSFCGAL_Shim
 // 15. ownsHandle: false — borrowed geometry is not freed in deinit
 //     (Tests that creating a non-owning wrapper on a live pointer doesn't crash.)
 @Test func testGeometryBorrowedHandle() throws {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
     let owner = try Geometry(wkt: "POINT(0 0)")
     // Create a non-owning alias — simulates how child geometries of collections
     // will be exposed without transferring ownership.
@@ -191,7 +192,7 @@ import CSFCGAL_Shim
 //   const sfcgal_geometry_t *const * → UnsafePointer<UnsafeRawPointer?>?
 //   sfcgal_geometry_t **        → UnsafeMutableRawPointer? (Swift treats void** as void*)
 @Test func testBatchTesselate() {
-    initializeSFCGAL()
+    TestSupport.initializeSFCGALOnce()
 
     let wkt = "POLYGON((0 0,1 0,1 1,0 1,0 0))"
     sfcgal_swift_clear_errors()
