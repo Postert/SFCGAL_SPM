@@ -75,6 +75,10 @@ let package = Package(
             path: "Benchmarks/BatchOperationsBenchmark"
         ),
 
-        .testTarget(name: "SwiftSFCGALTests", dependencies: ["SwiftSFCGAL", "CSFCGAL_Shim"]),
+        .testTarget(
+            name: "SwiftSFCGALTests",
+            dependencies: ["SwiftSFCGAL", "CSFCGAL_Shim"],
+            resources: [.process("Resources")]
+        ),
     ]
 )

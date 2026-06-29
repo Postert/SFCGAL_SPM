@@ -150,10 +150,11 @@ extension Geometry {
     ///
     /// - Parameters:
     ///   - relativeAlpha:  Relative alpha (typical values: 10–300).
-    ///   - relativeOffset: Relative offset distance.
+    ///   - relativeOffset: Relative offset distance. Defaults to 0, matching
+    ///     `SFCGAL::algorithm::alphaWrapping3D`.
     /// - Throws: `SFCGALError.operationFailed` on degenerate input.
     public func alphaWrapping3D(relativeAlpha: Int,
-                                relativeOffset: Int) throws -> Geometry {
+                                relativeOffset: Int = 0) throws -> Geometry {
         guard let ptr = try sfcgalCall({
             sfcgal_geometry_alpha_wrapping_3d(handle,
                                               size_t(relativeAlpha),
