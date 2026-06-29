@@ -37,6 +37,9 @@ SFCGAL_VERSION="${SFCGAL_VERSION_OVERRIDE:-2.3.0}"
 SFCGAL_URL="https://gitlab.com/sfcgal/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz"
 CGAL_VERSION="6.2"
 CGAL_URL="https://github.com/CGAL/cgal/releases/download/v${CGAL_VERSION}/CGAL-${CGAL_VERSION}.tar.xz"
+# SFCGAL 2.3.0 added a hard dependency on nlohmann_json (>= 3.11).
+NLOHMANN_JSON_VERSION="3.11.3"
+NLOHMANN_JSON_URL="https://github.com/nlohmann/json/releases/download/v${NLOHMANN_JSON_VERSION}/json.tar.xz"
 BOOST_VERSION="1.87.0"
 BOOST_VERSION_UNDERSCORE="1_87_0"
 BOOST_URLS=(
@@ -115,6 +118,19 @@ echo "=== Downloading Boost ${BOOST_VERSION} ==="
 download_with_retry "$WORK_DIR/boost.tar.gz" "${BOOST_URLS[@]}"
 tar xf "$WORK_DIR/boost.tar.gz" -C "$WORK_DIR"
 BOOST_ROOT="$WORK_DIR/boost_${BOOST_VERSION_UNDERSCORE}"
+
+# nlohmann_json is header-only and architecture-independent, so install it once
+# on the host. The generated CMake package config (share/cmake/nlohmann_json)
+# satisfies SFCGAL 2.3.0's find_package(nlohmann_json 3.11) for every iOS arch.
+echo "=== Downloading nlohmann_json ${NLOHMANN_JSON_VERSION} (header-only) ==="
+download_with_retry "$WORK_DIR/json.tar.xz" "$NLOHMANN_JSON_URL"
+tar xf "$WORK_DIR/json.tar.xz" -C "$WORK_DIR"
+NLOHMANN_JSON_PREFIX="$WORK_DIR/nlohmann_json-install"
+echo "=== Installing nlohmann_json (host) ==="
+cmake -S "$WORK_DIR/json" -B "$WORK_DIR/json-build" \
+    -DJSON_BuildTests=OFF \
+    -DCMAKE_INSTALL_PREFIX="$NLOHMANN_JSON_PREFIX" > /dev/null 2>&1
+cmake --install "$WORK_DIR/json-build" > /dev/null 2>&1
 
 # =============================================================================
 # Patch SFCGAL source
@@ -280,7 +296,7 @@ build_sfcgal() {
         -DSFCGAL_BUILD_BENCH=OFF \
         -DCGAL_DIR="$CGAL_DIR/lib/cmake/CGAL" \
         -DCGAL_CMAKE_EXACT_NT_BACKEND=GMP_BACKEND \
-        -DCMAKE_PREFIX_PATH="$boost_prefix" \
+        -DCMAKE_PREFIX_PATH="$boost_prefix;$NLOHMANN_JSON_PREFIX" \
         -DBoost_USE_STATIC_LIBS=ON \
         -DCGAL_Boost_USE_STATIC_LIBS=ON \
         -DBoost_NO_SYSTEM_PATHS=ON \
