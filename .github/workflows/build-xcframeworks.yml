@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       sfcgal_version:
-        description: "SFCGAL version to build (e.g., 2.2.0)"
+        description: "SFCGAL version to build (e.g., 2.3.0)"
         required: true
-        default: "2.2.0"
+        default: "2.3.0"
       gmp_version:
         description: "GMP version (e.g., 6.3.0)"
         required: true
@@ -24,7 +24,7 @@ on:
           - stable
         default: "dev"
       dev_suffix:
-        description: "Dev pre-release number (e.g., 3 → v2.2.0-3). Only used when release_type=dev."
+        description: "Dev pre-release number (e.g., 3 → v2.3.0-3). Only used when release_type=dev."
         required: false
         default: "1"
       create_release:

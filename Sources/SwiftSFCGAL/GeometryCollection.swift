@@ -135,7 +135,7 @@ public class MultiPolygon: GeometryCollection {
 
 /// A collection of `Solid` geometries.
 ///
-/// Maps to SFCGAL's `MULTISOLID` type (type ID 102).
+/// Maps to SFCGAL's `MULTISOLID` type (type ID 26).
 public class MultiSolid: GeometryCollection {
 
     /// Creates an empty `MultiSolid`.

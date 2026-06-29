@@ -5,7 +5,7 @@ import Foundation
 // ══════════════════════════════════════════════════════════════════════════════
 // Issue #16 — Analysis operations
 //
-// Coverage: every analysis function in SFCGAL 2.2.0's C API.
+// Coverage: every analysis function in SFCGAL 2.3.0's C API.
 //
 // Expected values are derived from first principles or geometric definitions:
 //

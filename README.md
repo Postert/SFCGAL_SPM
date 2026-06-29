@@ -19,13 +19,13 @@ SFCGAL is a C++ library built on top of [CGAL](https://www.cgal.org/) (the Compu
 
 ## Version pinning
 
-SwiftSFCGAL pins an **exact** SFCGAL version (currently **2.2.0**) and enforces this at compile time via a C++ `static_assert` in [`version_check.cc`](Sources/CSFCGAL_Shim/version_check.cc). If the installed SFCGAL version does not match, the build fails with a clear error message. This guarantees that the Swift wrapper, the system library, and the iOS XCFrameworks are always binary-compatible.
+SwiftSFCGAL pins an **exact** SFCGAL version (currently **2.3.0**) and enforces this at compile time via a C++ `static_assert` in [`version_check.cc`](Sources/CSFCGAL_Shim/version_check.cc). If the installed SFCGAL version does not match, the build fails with a clear error message. This guarantees that the Swift wrapper, the system library, and the iOS XCFrameworks are always binary-compatible.
 
 The required version is defined in a single place:
 
 ```c
 // Sources/CSFCGAL_Shim/include/sfcgal_swift_shim.h
-#define SWIFTSFCGAL_REQUIRED_VERSION "2.2.0"
+#define SWIFTSFCGAL_REQUIRED_VERSION "2.3.0"
 ```
 
 ## Usage
@@ -67,7 +67,7 @@ SFCGAL is available via Homebrew as a single install:
 ```bash
 brew install sfcgal
 
-# Verify the installed version matches the one pinned by SwiftSFCGAL (2.2.0):
+# Verify the installed version matches the one pinned by SwiftSFCGAL (2.3.0):
 pkg-config --modversion sfcgal
 
 # Build and test:
@@ -79,7 +79,7 @@ swift test
 
 ### Linux (Ubuntu / Debian)
 
-Ubuntu's `apt` repositories ship an older SFCGAL (1.5.1 on 24.04 LTS), which does not match the pinned version. You need to build SFCGAL **2.2.0** from source.
+Ubuntu's `apt` repositories ship an older SFCGAL (1.5.1 on 24.04 LTS), which does not match the pinned version. You need to build SFCGAL **2.3.0** from source.
 
 **1. Install build dependencies:**
 
@@ -94,10 +94,10 @@ sudo apt-get install -y \
     pkg-config
 ```
 
-**2. Build and install SFCGAL 2.2.0:**
+**2. Build and install SFCGAL 2.3.0:**
 
 ```bash
-SFCGAL_VERSION=2.2.0
+SFCGAL_VERSION=2.3.0
 SFCGAL_PREFIX=/usr/local/sfcgal
 
 curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz" | tar xz
@@ -121,7 +121,7 @@ export PKG_CONFIG_PATH="${SFCGAL_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
 export LD_LIBRARY_PATH="${SFCGAL_PREFIX}/lib:$LD_LIBRARY_PATH"
 
 # Verify:
-pkg-config --modversion sfcgal   # should print 2.2.0
+pkg-config --modversion sfcgal   # should print 2.3.0
 
 # Build and test:
 swift build
@@ -132,12 +132,12 @@ swift test
 
 Windows requires Visual Studio 2022 (for the MSVC toolchain and CRT headers), the [Swift.org toolchain for Windows](https://www.swift.org/install/windows/), and [vcpkg](https://vcpkg.io/) for the transitive C++ dependencies (CGAL, Boost, GMP, MPFR).
 
-**1. Build and install SFCGAL 2.2.0 from source:**
+**1. Build and install SFCGAL 2.3.0 from source:**
 
 Open a **Developer Command Prompt for VS 2022** (or run `vcvars64.bat` manually) and run:
 
 ```cmd
-set SFCGAL_VERSION=2.2.0
+set SFCGAL_VERSION=2.3.0
 set SFCGAL_PREFIX=C:\sfcgal
 
 curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v%SFCGAL_VERSION%/SFCGAL-v%SFCGAL_VERSION%.tar.gz" | tar xz

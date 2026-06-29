@@ -7,7 +7,7 @@ import CSFCGAL_Shim
 
 /// A 3D volumetric solid with one exterior shell and zero or more interior shells (voids).
 ///
-/// Maps to SFCGAL's `SOLID` type (type ID 101). Each shell is a
+/// Maps to SFCGAL's `SOLID` type (type ID 25). Each shell is a
 /// `PolyhedralSurface`. The exterior shell is shell index 0. Interior shells
 /// (voids / holes in the volume) are at indices 1…numShells-1.
 ///

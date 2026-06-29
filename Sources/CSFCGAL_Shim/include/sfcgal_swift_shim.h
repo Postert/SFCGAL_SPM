@@ -7,7 +7,7 @@
 // Single source of truth for the required SFCGAL version.
 // The compile-time check in version_check.cc enforces this at build time.
 // Also visible to Swift via the CSFCGAL_Shim module.
-#define SWIFTSFCGAL_REQUIRED_VERSION "2.2.0"
+#define SWIFTSFCGAL_REQUIRED_VERSION "2.3.0"
 
 // ── Error handling shim ───────────────────────────────────────────────────────
 
