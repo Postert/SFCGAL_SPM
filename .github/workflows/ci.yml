@@ -147,7 +147,6 @@ jobs:
     runs-on: windows-latest
     env:
       SFCGAL_PREFIX: C:/sfcgal
-      VCVARS: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat'
     steps:
       - uses: actions/checkout@v5
 
@@ -163,6 +162,26 @@ jobs:
         shell: bash
         run: swift --version
 
+      - name: Locate MSVC developer environment
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path $vswhere)) {
+            throw "vswhere.exe was not found at $vswhere"
+          }
+
+          $installPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $installPath) {
+            throw "No Visual Studio installation with MSVC x64 tools was found"
+          }
+
+          $vcvars = Join-Path $installPath "VC\Auxiliary\Build\vcvars64.bat"
+          if (-not (Test-Path $vcvars)) {
+            throw "vcvars64.bat was not found at $vcvars"
+          }
+
+          "VCVARS=$vcvars" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Cache SFCGAL build
         id: cache-sfcgal
         uses: actions/cache@v5
@@ -177,7 +196,14 @@ jobs:
         shell: cmd
         run: |
           curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v%SFCGAL_VERSION%/SFCGAL-v%SFCGAL_VERSION%.tar.gz" | tar xz
+          if not exist "%VCVARS%" (
+            echo VCVARS not found: %VCVARS%
+            exit /b 1
+          )
           call "%VCVARS%"
+          if errorlevel 1 exit /b 1
+          where cl
+          if errorlevel 1 exit /b 1
           cd SFCGAL-v%SFCGAL_VERSION%
           cmake -B build -G Ninja ^
             -DCMAKE_C_COMPILER=cl ^
@@ -215,7 +241,14 @@ jobs:
           :: Pass paths through MSVC-native LIB/INCLUDE env vars (populated by
           :: vcvars64 with MSVC CRT paths, then prepended with SFCGAL's dirs).
           :: The modulemap's link "SFCGAL" handles the actual link.
+          if not exist "%VCVARS%" (
+            echo VCVARS not found: %VCVARS%
+            exit /b 1
+          )
           call "%VCVARS%"
+          if errorlevel 1 exit /b 1
+          where cl
+          if errorlevel 1 exit /b 1
           set "LIB=%SFCGAL_PREFIX:/=\%\lib;%LIB%"
           set "INCLUDE=%SFCGAL_PREFIX:/=\%\include;%INCLUDE%"
           swift build -Xcc -I%SFCGAL_PREFIX%/include
@@ -225,7 +258,14 @@ jobs:
         run: |
           :: Add SFCGAL bin to PATH so the test binary can load SFCGAL.dll
           :: and its bundled dependencies (boost, mpfr, gmp) at runtime.
+          if not exist "%VCVARS%" (
+            echo VCVARS not found: %VCVARS%
+            exit /b 1
+          )
           call "%VCVARS%"
+          if errorlevel 1 exit /b 1
+          where cl
+          if errorlevel 1 exit /b 1
           set "PATH=%SFCGAL_PREFIX:/=\%\bin;%PATH%"
           set "LIB=%SFCGAL_PREFIX:/=\%\lib;%LIB%"
           set "INCLUDE=%SFCGAL_PREFIX:/=\%\include;%INCLUDE%"
