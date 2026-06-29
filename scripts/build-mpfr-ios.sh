@@ -23,6 +23,8 @@ set -euo pipefail
 
 MPFR_VERSION="${MPFR_VERSION_OVERRIDE:-4.2.1}"
 MPFR_URLS=(
+    "https://mirrors.kernel.org/gnu/mpfr/mpfr-${MPFR_VERSION}.tar.xz"
+    "https://ftpmirror.gnu.org/mpfr/mpfr-${MPFR_VERSION}.tar.xz"
     "https://www.mpfr.org/mpfr-${MPFR_VERSION}/mpfr-${MPFR_VERSION}.tar.xz"
     "https://ftp.gnu.org/gnu/mpfr/mpfr-${MPFR_VERSION}.tar.xz"
 )

@@ -127,11 +127,14 @@ echo "=== Creating SFCGAL.xcframework ==="
 # SFCGAL/config.h and SFCGAL/export.h transitively.
 # We define SFCGAL_USE_STATIC_LIBS so that SFCGAL_API resolves to nothing
 # (correct for static linking — no dllimport/dllexport).
+# The link directives are autolink hints; SPM also wires up these libraries
+# explicitly via the conditional binary-target dependencies in Package.swift.
 SFCGAL_MODULEMAP="module CSFCGAL_Binary {
     header \"SFCGAL/capi/sfcgal_c.h\"
     link \"SFCGAL\"
     link \"gmp\"
     link \"mpfr\"
+    link \"boost_serialization\"
     export *
 }"
 
@@ -150,12 +153,36 @@ xcodebuild -create-xcframework \
 
 echo "Created SFCGAL.xcframework"
 
+# ─── BoostSerialization XCFramework ──────────────────────────────────────────
+
+# Boost.Serialization is a non-header-only Boost component that libSFCGAL.a
+# references but does not include. Ship it as a link-only XCFramework with
+# no headers — the package's public API surface does not expose Boost,
+# SFCGAL was already built against the headers at SFCGAL-build time, and
+# the consumer only needs the symbols at link time.
+#
+# The artifact is named BoostSerialization (not just Boost) to make it
+# explicit that this is one specific compiled Boost component, not the
+# whole library. If SFCGAL ever requires another non-header-only Boost
+# component (Thread, System, …), it should be shipped as a sibling
+# XCFramework with a parallel name.
+
+echo ""
+echo "=== Creating BoostSerialization.xcframework ==="
+
+xcodebuild -create-xcframework \
+    -library "${SFCGAL_BUILD}/ios-arm64/lib/libboost_serialization.a" \
+    -library "${SFCGAL_BUILD}/simulator-fat/lib/libboost_serialization.a" \
+    -output "${OUTPUT_DIR}/BoostSerialization.xcframework"
+
+echo "Created BoostSerialization.xcframework"
+
 # ─── Verification ─────────────────────────────────────────────────────────────
 
 echo ""
 echo "=== Verifying XCFrameworks ==="
 
-for fw in GMP MPFR SFCGAL; do
+for fw in GMP MPFR SFCGAL BoostSerialization; do
     fw_path="${OUTPUT_DIR}/${fw}.xcframework"
     echo ""
     echo "--- ${fw}.xcframework ---"

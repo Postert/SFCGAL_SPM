@@ -33,10 +33,13 @@
 
 set -euo pipefail
 
-SFCGAL_VERSION="${SFCGAL_VERSION_OVERRIDE:-2.0.0}"
+SFCGAL_VERSION="${SFCGAL_VERSION_OVERRIDE:-2.3.0}"
 SFCGAL_URL="https://gitlab.com/sfcgal/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz"
-CGAL_VERSION="6.0.1"
+CGAL_VERSION="6.2"
 CGAL_URL="https://github.com/CGAL/cgal/releases/download/v${CGAL_VERSION}/CGAL-${CGAL_VERSION}.tar.xz"
+# SFCGAL 2.3.0 added a hard dependency on nlohmann_json (>= 3.11).
+NLOHMANN_JSON_VERSION="3.11.3"
+NLOHMANN_JSON_URL="https://github.com/nlohmann/json/releases/download/v${NLOHMANN_JSON_VERSION}/json.tar.xz"
 BOOST_VERSION="1.87.0"
 BOOST_VERSION_UNDERSCORE="1_87_0"
 BOOST_URLS=(
@@ -116,6 +119,19 @@ download_with_retry "$WORK_DIR/boost.tar.gz" "${BOOST_URLS[@]}"
 tar xf "$WORK_DIR/boost.tar.gz" -C "$WORK_DIR"
 BOOST_ROOT="$WORK_DIR/boost_${BOOST_VERSION_UNDERSCORE}"
 
+# nlohmann_json is header-only and architecture-independent, so install it once
+# on the host. The generated CMake package config (share/cmake/nlohmann_json)
+# satisfies SFCGAL 2.3.0's find_package(nlohmann_json 3.11) for every iOS arch.
+echo "=== Downloading nlohmann_json ${NLOHMANN_JSON_VERSION} (header-only) ==="
+download_with_retry "$WORK_DIR/json.tar.xz" "$NLOHMANN_JSON_URL"
+tar xf "$WORK_DIR/json.tar.xz" -C "$WORK_DIR"
+NLOHMANN_JSON_PREFIX="$WORK_DIR/nlohmann_json-install"
+echo "=== Installing nlohmann_json (host) ==="
+cmake -S "$WORK_DIR/json" -B "$WORK_DIR/json-build" \
+    -DJSON_BuildTests=OFF \
+    -DCMAKE_INSTALL_PREFIX="$NLOHMANN_JSON_PREFIX" > /dev/null 2>&1
+cmake --install "$WORK_DIR/json-build" > /dev/null 2>&1
+
 # =============================================================================
 # Patch SFCGAL source
 # =============================================================================
@@ -166,7 +182,22 @@ build_boost() {
     local cxx
     cxx=$(xcrun --sdk "$sdk_name" --find clang++)
 
+    # Map our arch to b2's architecture taxonomy. b2 also wants
+    # address-model=64 so it doesn't infer 32-bit from architecture=x86.
+    local b2_arch
+    case "$arch" in
+        arm64)  b2_arch=arm ;;
+        x86_64) b2_arch=x86 ;;
+        *) echo "ERROR: unsupported arch: $arch" >&2; exit 1 ;;
+    esac
+
     local boost_install="$WORK_DIR/boost-${variant_name}"
+    # Per-variant build directory. Without this, b2's bin.v2/ cache lives
+    # under $BOOST_ROOT and is keyed by toolset name (clang-ios) — so a
+    # later variant silently reuses object files from the first arm64
+    # variant, producing a "simulator-x86_64" install that is actually
+    # arm64. Isolating the build directory per variant fixes that.
+    local boost_build="$WORK_DIR/boost-build-${variant_name}"
 
     echo "=== Building Boost for ${sdk_name} ${arch} ===" >&2
 
@@ -183,6 +214,7 @@ JAMEOF
         cd "$BOOST_ROOT"
         ./b2 \
             --user-config="$jam_file" \
+            --build-dir="$boost_build" \
             --prefix="$boost_install" \
             --with-thread \
             --with-system \
@@ -192,11 +224,21 @@ JAMEOF
             threading=multi \
             variant=release \
             target-os=iphone \
-            architecture=arm \
+            architecture="$b2_arch" \
+            address-model=64 \
             -j"$NCPU" \
             install \
             > /dev/null 2>&1
     )
+
+    # Verify the produced archive is actually the requested architecture.
+    # Catches any future regression of the "shared b2 cache" class of bug.
+    local actual_arch
+    actual_arch=$(lipo -archs "$boost_install/lib/libboost_serialization.a")
+    if [ "$actual_arch" != "$arch" ]; then
+        echo "ERROR: Boost ${variant_name} produced arch '${actual_arch}', expected '${arch}'" >&2
+        exit 1
+    fi
 
     echo "$boost_install"
 }
@@ -280,7 +322,7 @@ build_sfcgal() {
         -DSFCGAL_BUILD_BENCH=OFF \
         -DCGAL_DIR="$CGAL_DIR/lib/cmake/CGAL" \
         -DCGAL_CMAKE_EXACT_NT_BACKEND=GMP_BACKEND \
-        -DCMAKE_PREFIX_PATH="$boost_prefix" \
+        -DCMAKE_PREFIX_PATH="$boost_prefix;$NLOHMANN_JSON_PREFIX" \
         -DBoost_USE_STATIC_LIBS=ON \
         -DCGAL_Boost_USE_STATIC_LIBS=ON \
         -DBoost_NO_SYSTEM_PATHS=ON \
@@ -290,7 +332,11 @@ build_sfcgal() {
         -DMPFR_LIBRARIES="$mpfr_prefix/lib/libmpfr.a" \
         -DCMAKE_CXX_STANDARD=17 \
         -Wno-dev \
-        > /dev/null 2>&1
+        > "$build_dir/configure.log" 2>&1 || {
+            echo "=== SFCGAL configure FAILED for ${sdk_name} ${arch}; configure.log tail: ==="
+            tail -80 "$build_dir/configure.log"
+            exit 1
+        }
 
     echo "=== Building SFCGAL for ${sdk_name} ${arch} ==="
     cmake --build "$build_dir" --config Release -j"$NCPU" 2>&1 | tail -5
@@ -332,6 +378,18 @@ build_sfcgal \
     "$BOOST_SIM_X86"
 
 # =============================================================================
+# Persist Boost.Serialization archives outside WORK_DIR
+# =============================================================================
+# WORK_DIR is removed by the EXIT trap. The Boost archives must survive into
+# the next build stage (create-xcframeworks.sh) so they can be packaged into
+# BoostSerialization.xcframework. Copy them next to libSFCGAL.a in each slice.
+
+echo "=== Staging libboost_serialization.a per slice ==="
+cp "$BOOST_IOS_ARM64/lib/libboost_serialization.a" "$OUTPUT_DIR/ios-arm64/lib/"
+cp "$BOOST_SIM_ARM64/lib/libboost_serialization.a" "$OUTPUT_DIR/simulator-arm64/lib/"
+cp "$BOOST_SIM_X86/lib/libboost_serialization.a"   "$OUTPUT_DIR/simulator-x86_64/lib/"
+
+# =============================================================================
 # Create fat simulator library
 # =============================================================================
 
@@ -342,6 +400,10 @@ lipo -create \
     "$OUTPUT_DIR/simulator-arm64/lib/libSFCGAL.a" \
     "$OUTPUT_DIR/simulator-x86_64/lib/libSFCGAL.a" \
     -output "$OUTPUT_DIR/simulator-fat/lib/libSFCGAL.a"
+lipo -create \
+    "$OUTPUT_DIR/simulator-arm64/lib/libboost_serialization.a" \
+    "$OUTPUT_DIR/simulator-x86_64/lib/libboost_serialization.a" \
+    -output "$OUTPUT_DIR/simulator-fat/lib/libboost_serialization.a"
 
 # =============================================================================
 # Verify all outputs
@@ -373,6 +435,13 @@ verify_lib "$OUTPUT_DIR/simulator-arm64/lib/libSFCGAL.a" "7" "Simulator arm64"
 verify_lib "$OUTPUT_DIR/simulator-x86_64/lib/libSFCGAL.a" "7" "Simulator x86_64"
 
 echo "  Simulator fat: $(lipo -info "$OUTPUT_DIR/simulator-fat/lib/libSFCGAL.a")"
+
+# Verify Boost.Serialization archives are staged next to SFCGAL
+verify_lib "$OUTPUT_DIR/ios-arm64/lib/libboost_serialization.a" "2" "Boost.Serialization iOS device arm64"
+verify_lib "$OUTPUT_DIR/simulator-arm64/lib/libboost_serialization.a" "7" "Boost.Serialization Simulator arm64"
+verify_lib "$OUTPUT_DIR/simulator-x86_64/lib/libboost_serialization.a" "7" "Boost.Serialization Simulator x86_64"
+
+echo "  Boost.Serialization Simulator fat: $(lipo -info "$OUTPUT_DIR/simulator-fat/lib/libboost_serialization.a")"
 
 # Verify C API header is present
 echo ""

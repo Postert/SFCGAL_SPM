@@ -20,8 +20,11 @@ private let typeGeometryCollection : UInt32 = 7
 private let typePolyhedralSurface  : UInt32 = 15
 private let typeTriangulatedSurface: UInt32 = 16
 private let typeTriangle           : UInt32 = 17
-private let typeSolid              : UInt32 = 101
-private let typeMultiSolid         : UInt32 = 102
+// Note: SFCGAL 2.3.0 renumbered SOLID (101 → 25) and MULTISOLID (102 → 26)
+// and inserted SFCGAL_TYPE_NURBSCURVE = 21. These literals track 2.3.0, the
+// version pinned by SWIFTSFCGAL_REQUIRED_VERSION.
+private let typeSolid              : UInt32 = 25
+private let typeMultiSolid         : UInt32 = 26
 
 // MARK: - Factory
 

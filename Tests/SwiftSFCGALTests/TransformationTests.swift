@@ -5,7 +5,7 @@ import Foundation
 // ══════════════════════════════════════════════════════════════════════════════
 // Issue #15 — Transformation operations
 //
-// Coverage: every transformation function exposed by SFCGAL 2.2.0's C API.
+// Coverage: every transformation function exposed by SFCGAL 2.3.0's C API.
 //
 // Expected values are derived from first principles:
 //
