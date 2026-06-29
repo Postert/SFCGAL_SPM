@@ -15,7 +15,7 @@ jobs:
     name: Swift on macOS
     runs-on: macos-latest
     env:
-      SFCGAL_PREFIX: ${{ github.workspace }}/.sfcgal/${{ env.SFCGAL_VERSION }}
+      SFCGAL_PREFIX: ${{ github.workspace }}/.sfcgal
     steps:
       - uses: actions/checkout@v5
 
@@ -72,7 +72,7 @@ jobs:
     name: Swift on macOS with Address Sanitizer
     runs-on: macos-latest
     env:
-      SFCGAL_PREFIX: ${{ github.workspace }}/.sfcgal/${{ env.SFCGAL_VERSION }}
+      SFCGAL_PREFIX: ${{ github.workspace }}/.sfcgal
     steps:
       - uses: actions/checkout@v5
 
