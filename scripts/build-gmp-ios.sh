@@ -19,6 +19,8 @@ set -euo pipefail
 
 GMP_VERSION="${GMP_VERSION_OVERRIDE:-6.3.0}"
 GMP_URLS=(
+    "https://mirrors.kernel.org/gnu/gmp/gmp-${GMP_VERSION}.tar.xz"
+    "https://ftpmirror.gnu.org/gmp/gmp-${GMP_VERSION}.tar.xz"
     "https://gmplib.org/download/gmp/gmp-${GMP_VERSION}.tar.xz"
     "https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}.tar.xz"
 )
