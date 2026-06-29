@@ -22,6 +22,9 @@
 // - direct PostGIS EWKB writer/reader coverage beyond current EWKT/WKB round-trips
 // - OBJ/STL/VTK export
 // - lineSubstring, buffer3D, minkowskiSum, offsetPolygon, visibility
+// - algorithm option variants such as volume(..., NoValidityCheck); this keeps
+//   VolumeTest.cpp / cubeWithHoleVolume out of scope until the Swift API can
+//   express the same interior-shell validity behavior as upstream.
 //
 // Skipped or reduced for stability:
 // - Upstream file-driven predicate and boolean tests are represented with stable

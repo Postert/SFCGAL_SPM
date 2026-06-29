@@ -74,6 +74,66 @@ import Testing
                                      "DistanceTest.cpp / testDistanceMultiPointMultiPoint_disjoint")
 }
 
+@Test func upstreamDistanceEmptyAnd3DEdgeCases() throws {
+    // Upstream: algorithm/DistanceTest.cpp / empty point, collapsed/zero-length segments,
+    // line-triangle, triangle-triangle, and polygon-solid cases.
+    let emptyPointDistance = try UpstreamParity.point("POINT EMPTY").distance(to: UpstreamParity.point("POINT EMPTY"))
+    #expect(emptyPointDistance.isInfinite,
+            "DistanceTest.cpp / testDistanceBetweenEmptyPointsIsInfinity")
+
+    let collapsed3DPoint = try UpstreamParity.geometry("POINT (0.0 3.0 4.0)")
+    let collapsed3DLine = try UpstreamParity.geometry("LINESTRING (0.0 0.0 0.0,0.0 -1.0 -1.0)")
+    UpstreamParity.expectAlmostEqual(try collapsed3DPoint.distance3D(to: collapsed3DLine), 5.0,
+                                     "DistanceTest.cpp / testDistancePointLineString3D_pointOnLineString_collapsedSegments")
+
+    let zeroLengthLineA = try UpstreamParity.geometry("LINESTRING (0.0 0.0,-1.0 -1.0)")
+    let zeroLengthLineB = try UpstreamParity.geometry("LINESTRING (3.0 4.0,4.0 5.0)")
+    UpstreamParity.expectAlmostEqual(try zeroLengthLineA.distance(to: zeroLengthLineB), 5.0,
+                                     "DistanceTest.cpp / testDistanceLineStringLineString_zeroLengthSegments")
+
+    let zeroLengthLine3DA = try UpstreamParity.geometry("LINESTRING (0.0 0.0 0.0,-1.0 -1.0 -1.0)")
+    let zeroLengthLine3DB = try UpstreamParity.geometry("LINESTRING (0.0 3.0 4.0,0.0 4.0 5.0)")
+    UpstreamParity.expectAlmostEqual(try zeroLengthLine3DA.distance3D(to: zeroLengthLine3DB), 5.0,
+                                     "DistanceTest.cpp / testDistanceLineStringLineString3D_zeroLengthSegments")
+
+    let containingTriangle = try UpstreamParity.geometry(
+        "TRIANGLE ((-4.0 0.0 1.0,4.0 0.0 1.0,0.0 4.0 1.0,-4.0 0.0 1.0))"
+    )
+    let lineInTriangle = try UpstreamParity.geometry("LINESTRING (-1.0 0.0 1.0,1.0 0.0 1.0)")
+    UpstreamParity.expectAlmostEqual(try lineInTriangle.distance3D(to: containingTriangle), 0.0,
+                                     "DistanceTest.cpp / testDistance3DLineStringTriangle_lineStringInTriangle")
+
+    let lineNearestAtStart = try UpstreamParity.geometry("LINESTRING (-1.0 0.0 2.0,1.0 0.0 3.0)")
+    UpstreamParity.expectAlmostEqual(try lineNearestAtStart.distance3D(to: containingTriangle), 1.0,
+                                     "DistanceTest.cpp / testDistance3DLineStringTriangle_lineStringStartPointIsNearest")
+
+    let containedTriangle = try UpstreamParity.geometry(
+        "TRIANGLE ((-3.0 0.0 1.0,3.0 0.0 1.0,0.0 3.0 1.0,-3.0 0.0 1.0))"
+    )
+    UpstreamParity.expectAlmostEqual(try containedTriangle.distance3D(to: containingTriangle), 0.0,
+                                     "DistanceTest.cpp / testDistance3DTriangleTriangle_contained")
+
+    let parallelTriangle = try UpstreamParity.geometry(
+        "TRIANGLE ((-4.0 0.0 2.0,4.0 0.0 2.0,0.0 4.0 2.0,-4.0 0.0 2.0))"
+    )
+    UpstreamParity.expectAlmostEqual(try containedTriangle.distance3D(to: parallelTriangle), 1.0,
+                                     "DistanceTest.cpp / testDistance3DTriangleTriangle_parallel")
+
+    let solid = try UpstreamParity.geometry(UpstreamParity.upstreamCubeSolidWKT())
+    let intersectingPolygon = try UpstreamParity.geometry(
+        "POLYGON Z ((1 -1 -1,1 1 -1,1 1 1,1 -1 1,1 -1 -1))"
+    )
+    UpstreamParity.expectAlmostEqual(try intersectingPolygon.distance3D(to: solid), 0.0,
+                                     "DistanceTest.cpp / testDistancePolygonSolid")
+
+    let disjointPolygon = try UpstreamParity.geometry(
+        "POLYGON Z ((2 2 2,3 2 2,3 3 2,2 3 2,2 2 2))"
+    )
+    UpstreamParity.expectAlmostEqual(try disjointPolygon.distance3D(to: solid), 1.7320508,
+                                     tolerance: 1e-6,
+                                     "DistanceTest.cpp / testDistancePolygonSolid_disjoint")
+}
+
 @Test func upstreamLengthCases() throws {
     // Upstream: algorithm/LengthTest.cpp / testZeroLength, testZeroLengthVertical,
     // testLengthLineString, test3DLengthVertical, test3DLengthLineString, testLength_invalidType
@@ -105,6 +165,26 @@ import Testing
     // Upstream: algorithm/AreaTest.cpp / testPoint2D3D, testLineString2D3D,
     // testArea2D_PolygonWithHoleWithBadOrientation, testArea3D_Triangle1/2,
     // testArea2D_Triangle, testArea3D_Square1x1, testArea3D_Square4X4, testArea3D_Square4X4WithHole
+    for wkt in [
+        "POINT EMPTY",
+        "LINESTRING EMPTY",
+        "POLYGON EMPTY",
+        "MULTIPOINT EMPTY",
+        "MULTILINESTRING EMPTY",
+        "MULTIPOLYGON EMPTY",
+        "GEOMETRYCOLLECTION EMPTY",
+        "TIN EMPTY",
+        "POLYHEDRALSURFACE EMPTY",
+        "SOLID EMPTY",
+        "MULTISOLID EMPTY"
+    ] {
+        let empty = try UpstreamParity.geometry(wkt)
+        UpstreamParity.expectAlmostEqual(try empty.area(), 0.0,
+                                         "AreaTest.cpp / testEmpty2D3D")
+        UpstreamParity.expectAlmostEqual(try empty.area3D(), 0.0,
+                                         "AreaTest.cpp / testEmpty2D3D")
+    }
+
     UpstreamParity.expectAlmostEqual(try Point(x: 3.0, y: 4.0).area(), 0.0)
     UpstreamParity.expectAlmostEqual(try Point(x: 3.0, y: 4.0, z: 5.0).area3D(), 0.0)
     UpstreamParity.expectAlmostEqual(
@@ -152,8 +232,9 @@ import Testing
 }
 
 @Test func upstreamVolumeCases() throws {
-    // Upstream: algorithm/VolumeTest.cpp / cubeVolume, invertedCubeVolume, polyhedronVolume
-    let cube = try UpstreamParity.geometry(UpstreamParity.squareShellWKT())
+    // Upstream: algorithm/VolumeTest.cpp / cubeVolume, cubeWithHoleVolume,
+    // invertedCubeVolume, polyhedronVolume
+    let cube = try UpstreamParity.geometry(UpstreamParity.upstreamCubeSolidWKT())
     UpstreamParity.expectAlmostEqual(try cube.volume(), 1.0, tolerance: 1e-8)
 
     let invertedCube = try UpstreamParity.geometry(
