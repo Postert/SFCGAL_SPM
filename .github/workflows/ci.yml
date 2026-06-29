@@ -32,12 +32,18 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.SFCGAL_PREFIX }}
-          key: sfcgal-${{ env.SFCGAL_VERSION }}-macos-${{ runner.arch }}
+          key: sfcgal-${{ env.SFCGAL_VERSION }}-macos-${{ runner.arch }}-v2
 
       - name: Build SFCGAL from source
         if: steps.cache-sfcgal.outputs.cache-hit != 'true'
         run: |
           curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz" | tar xz -C "$RUNNER_TEMP"
+          # Boost.System is header-only in current Homebrew Boost releases, so
+          # the old SFCGAL 2.2.0 CMake request for the removed boost_system
+          # package must be dropped before configuring.
+          sed -i.bak \
+            's/set( SFCGAL_Boost_COMPONENTS thread system serialization )/set( SFCGAL_Boost_COMPONENTS thread serialization )/' \
+            "$RUNNER_TEMP/SFCGAL-v${SFCGAL_VERSION}/CMakeLists.txt"
           cmake -S "$RUNNER_TEMP/SFCGAL-v${SFCGAL_VERSION}" -B "$RUNNER_TEMP/SFCGAL-v${SFCGAL_VERSION}/build" \
             -DCMAKE_INSTALL_PREFIX="${SFCGAL_PREFIX}" \
             -DCMAKE_BUILD_TYPE=Release \
@@ -87,12 +93,18 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.SFCGAL_PREFIX }}
-          key: sfcgal-${{ env.SFCGAL_VERSION }}-macos-${{ runner.arch }}
+          key: sfcgal-${{ env.SFCGAL_VERSION }}-macos-${{ runner.arch }}-v2
 
       - name: Build SFCGAL from source
         if: steps.cache-sfcgal.outputs.cache-hit != 'true'
         run: |
           curl -sL "https://gitlab.com/sfcgal/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz" | tar xz -C "$RUNNER_TEMP"
+          # Boost.System is header-only in current Homebrew Boost releases, so
+          # the old SFCGAL 2.2.0 CMake request for the removed boost_system
+          # package must be dropped before configuring.
+          sed -i.bak \
+            's/set( SFCGAL_Boost_COMPONENTS thread system serialization )/set( SFCGAL_Boost_COMPONENTS thread serialization )/' \
+            "$RUNNER_TEMP/SFCGAL-v${SFCGAL_VERSION}/CMakeLists.txt"
           cmake -S "$RUNNER_TEMP/SFCGAL-v${SFCGAL_VERSION}" -B "$RUNNER_TEMP/SFCGAL-v${SFCGAL_VERSION}/build" \
             -DCMAKE_INSTALL_PREFIX="${SFCGAL_PREFIX}" \
             -DCMAKE_BUILD_TYPE=Release \
