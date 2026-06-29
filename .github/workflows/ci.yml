@@ -9,12 +9,16 @@ env:
   # SWIFTSFCGAL_REQUIRED_VERSION in Sources/CSFCGAL_Shim/include/sfcgal_swift_shim.h
   # (enforced at compile time via static_assert in version_check.cc).
   SFCGAL_VERSION: "2.2.0"
+  # SFCGAL 2.2.0 uses CGAL APIs that were removed or renamed in newer CGAL
+  # releases, so macOS source builds must not use Homebrew's moving CGAL.
+  CGAL_VERSION: "6.0.1"
 
 jobs:
   test-macos:
     name: Swift on macOS
     runs-on: macos-latest
     env:
+      CGAL_PREFIX: ${{ github.workspace }}/.cgal
       SFCGAL_PREFIX: ${{ github.workspace }}/.sfcgal
     steps:
       - uses: actions/checkout@v5
@@ -25,14 +29,38 @@ jobs:
         run: swift --version
 
       - name: Install SFCGAL build dependencies
-        run: brew install cmake cgal boost gmp mpfr pkg-config
+        run: brew install cmake boost gmp mpfr pkg-config
+
+      - name: Cache CGAL build
+        id: cache-cgal
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.CGAL_PREFIX }}
+          key: cgal-${{ env.CGAL_VERSION }}-macos-${{ runner.arch }}-v1
+
+      - name: Build CGAL from source
+        if: steps.cache-cgal.outputs.cache-hit != 'true'
+        run: |
+          curl -sL "https://github.com/CGAL/cgal/archive/refs/tags/v${CGAL_VERSION}.tar.gz" | tar xz -C "$RUNNER_TEMP"
+          CGAL_SOURCE="$(find "$RUNNER_TEMP" -maxdepth 1 -type d -name 'cgal-*' -print -quit)"
+          [ -n "$CGAL_SOURCE" ] || {
+            echo "::error::CGAL source archive did not extract as expected"
+            exit 1
+          }
+          cmake -S "$CGAL_SOURCE" -B "$CGAL_SOURCE/build" \
+            -DCMAKE_INSTALL_PREFIX="${CGAL_PREFIX}" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DWITH_examples=OFF \
+            -DWITH_demos=OFF
+          cmake --install "$CGAL_SOURCE/build"
 
       - name: Cache SFCGAL build
         id: cache-sfcgal
         uses: actions/cache@v5
         with:
           path: ${{ env.SFCGAL_PREFIX }}
-          key: sfcgal-${{ env.SFCGAL_VERSION }}-macos-${{ runner.arch }}-v2
+          key: sfcgal-${{ env.SFCGAL_VERSION }}-macos-${{ runner.arch }}-v3
 
       - name: Build SFCGAL from source
         if: steps.cache-sfcgal.outputs.cache-hit != 'true'
@@ -46,6 +74,8 @@ jobs:
             "$RUNNER_TEMP/SFCGAL-v${SFCGAL_VERSION}/CMakeLists.txt"
           cmake -S "$RUNNER_TEMP/SFCGAL-v${SFCGAL_VERSION}" -B "$RUNNER_TEMP/SFCGAL-v${SFCGAL_VERSION}/build" \
             -DCMAKE_INSTALL_PREFIX="${SFCGAL_PREFIX}" \
+            -DCMAKE_PREFIX_PATH="${CGAL_PREFIX}" \
+            -DCGAL_DIR="${CGAL_PREFIX}/lib/cmake/CGAL" \
             -DCMAKE_BUILD_TYPE=Release \
             -DSFCGAL_BUILD_TESTS=OFF \
             -DSFCGAL_BUILD_EXAMPLES=OFF \
@@ -78,6 +108,7 @@ jobs:
     name: Swift on macOS with Address Sanitizer
     runs-on: macos-latest
     env:
+      CGAL_PREFIX: ${{ github.workspace }}/.cgal
       SFCGAL_PREFIX: ${{ github.workspace }}/.sfcgal
     steps:
       - uses: actions/checkout@v5
@@ -86,14 +117,38 @@ jobs:
         run: swift --version
 
       - name: Install SFCGAL build dependencies
-        run: brew install cmake cgal boost gmp mpfr pkg-config
+        run: brew install cmake boost gmp mpfr pkg-config
+
+      - name: Cache CGAL build
+        id: cache-cgal
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.CGAL_PREFIX }}
+          key: cgal-${{ env.CGAL_VERSION }}-macos-${{ runner.arch }}-v1
+
+      - name: Build CGAL from source
+        if: steps.cache-cgal.outputs.cache-hit != 'true'
+        run: |
+          curl -sL "https://github.com/CGAL/cgal/archive/refs/tags/v${CGAL_VERSION}.tar.gz" | tar xz -C "$RUNNER_TEMP"
+          CGAL_SOURCE="$(find "$RUNNER_TEMP" -maxdepth 1 -type d -name 'cgal-*' -print -quit)"
+          [ -n "$CGAL_SOURCE" ] || {
+            echo "::error::CGAL source archive did not extract as expected"
+            exit 1
+          }
+          cmake -S "$CGAL_SOURCE" -B "$CGAL_SOURCE/build" \
+            -DCMAKE_INSTALL_PREFIX="${CGAL_PREFIX}" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DWITH_examples=OFF \
+            -DWITH_demos=OFF
+          cmake --install "$CGAL_SOURCE/build"
 
       - name: Cache SFCGAL build
         id: cache-sfcgal
         uses: actions/cache@v5
         with:
           path: ${{ env.SFCGAL_PREFIX }}
-          key: sfcgal-${{ env.SFCGAL_VERSION }}-macos-${{ runner.arch }}-v2
+          key: sfcgal-${{ env.SFCGAL_VERSION }}-macos-${{ runner.arch }}-v3
 
       - name: Build SFCGAL from source
         if: steps.cache-sfcgal.outputs.cache-hit != 'true'
@@ -107,6 +162,8 @@ jobs:
             "$RUNNER_TEMP/SFCGAL-v${SFCGAL_VERSION}/CMakeLists.txt"
           cmake -S "$RUNNER_TEMP/SFCGAL-v${SFCGAL_VERSION}" -B "$RUNNER_TEMP/SFCGAL-v${SFCGAL_VERSION}/build" \
             -DCMAKE_INSTALL_PREFIX="${SFCGAL_PREFIX}" \
+            -DCMAKE_PREFIX_PATH="${CGAL_PREFIX}" \
+            -DCGAL_DIR="${CGAL_PREFIX}/lib/cmake/CGAL" \
             -DCMAKE_BUILD_TYPE=Release \
             -DSFCGAL_BUILD_TESTS=OFF \
             -DSFCGAL_BUILD_EXAMPLES=OFF \
