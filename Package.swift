@@ -25,6 +25,8 @@ let package = Package(
                     condition: .when(platforms: [.iOS, .tvOS, .watchOS, .visionOS])),
                 .target(name: "CMPFR_Binary",
                     condition: .when(platforms: [.iOS, .tvOS, .watchOS, .visionOS])),
+                .target(name: "CBoostSerialization_Binary",
+                    condition: .when(platforms: [.iOS, .tvOS, .watchOS, .visionOS])),
             ]
         ),
 
@@ -54,18 +56,23 @@ let package = Package(
         // ── iOS: prebuilt XCFrameworks (downloaded from GitHub releases) ──
         .binaryTarget(
             name: "CSFCGAL_Binary",
-            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.3.0-1/SFCGAL.xcframework.zip",
-            checksum: "93bffa35aeee2bdc6ba31cb9790ef3cccb1723762e28d4d78a8a7ee9be5f694e"
+            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.3.0-2/SFCGAL.xcframework.zip",
+            checksum: "PLACEHOLDER_SFCGAL"
         ),
         .binaryTarget(
             name: "CGMP_Binary",
-            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.3.0-1/GMP.xcframework.zip",
-            checksum: "fa4539b69863524f90ec9a6116e6a25a7425e7f04f365f8f7018c410cb566b53"
+            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.3.0-2/GMP.xcframework.zip",
+            checksum: "PLACEHOLDER_GMP"
         ),
         .binaryTarget(
             name: "CMPFR_Binary",
-            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.3.0-1/MPFR.xcframework.zip",
-            checksum: "3078911fc4d9e5a3238a323a8d7eb60ebca4051b2acdb88544e7ecdd2079bd13"
+            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.3.0-2/MPFR.xcframework.zip",
+            checksum: "PLACEHOLDER_MPFR"
+        ),
+        .binaryTarget(
+            name: "CBoostSerialization_Binary",
+            url: "https://github.com/Postert/SFCGAL_SPM/releases/download/v2.3.0-2/BoostSerialization.xcframework.zip",
+            checksum: "PLACEHOLDER_BOOSTSERIALIZATION"
         ),
 
         // ── Tests ──

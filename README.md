@@ -186,7 +186,9 @@ swift test  -Xcc -I%SFCGAL_PREFIX%/include
 
 ### iOS / tvOS / watchOS / visionOS
 
-**No setup required.** The prebuilt XCFrameworks (SFCGAL, GMP, MPFR) are hosted on GitHub releases and downloaded automatically by SPM when you add the package. Just add the dependency to your Xcode project or `Package.swift` and build.
+**No setup required.** Four prebuilt XCFrameworks (SFCGAL, GMP, MPFR, Boost.Serialization) are hosted on GitHub releases and downloaded automatically by SPM when you add the package. Just add the dependency to your Xcode project or `Package.swift` and build.
+
+Boost.Serialization is shipped as a link-only XCFramework (no public headers) because `libSFCGAL.a` references its compiled component at link time. The other Boost components SFCGAL uses are header-only and are baked into `libSFCGAL.a` itself.
 
 To verify the iOS build from the command line:
 
