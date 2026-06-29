@@ -290,7 +290,11 @@ build_sfcgal() {
         -DMPFR_LIBRARIES="$mpfr_prefix/lib/libmpfr.a" \
         -DCMAKE_CXX_STANDARD=17 \
         -Wno-dev \
-        > /dev/null 2>&1
+        > "$build_dir/configure.log" 2>&1 || {
+            echo "=== SFCGAL configure FAILED for ${sdk_name} ${arch}; configure.log tail: ==="
+            tail -80 "$build_dir/configure.log"
+            exit 1
+        }
 
     echo "=== Building SFCGAL for ${sdk_name} ${arch} ==="
     cmake --build "$build_dir" --config Release -j"$NCPU" 2>&1 | tail -5
